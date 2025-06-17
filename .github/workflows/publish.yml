@@ -32,9 +32,9 @@ jobs:
         env:
           TMDB_TYPE: ${{ matrix.type }}
 
-      - name: Run ETL script
+      - name: Update index
         run: |
-          uv run tmdb_etl.py --verbose ./tmdb.parquet
+          uv run tmdb_index.py --verbose ./tmdb.parquet
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           TMDB_TYPE: ${{ matrix.type }}
