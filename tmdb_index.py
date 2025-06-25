@@ -33,7 +33,7 @@ _EXTERNAL_IDS_RESPONSE_SCHEMA = pl.Schema(
 )
 
 
-def _align_id_col(df: pl.DataFrame) -> pl.DataFrame:
+def align_id_col(df: pl.DataFrame) -> pl.DataFrame:
     if df.is_empty():
         return df
     max_id: int = df.select(pl.col("id").max()).item()
@@ -111,7 +111,7 @@ def _insert_tmdb_latest_changes(
         )
         df = df.pipe(_update_or_append, tmdb_changes)
 
-    return df.pipe(_align_id_col)
+    return df.pipe(align_id_col)
 
 
 def _fetch_jsonl_gz(url: str) -> Iterator[Any]:
@@ -254,7 +254,7 @@ def _insert_tmdb_external_ids(
     df_changes = pl.from_dicts(data, schema=_EXTERNAL_IDS_RESPONSE_SCHEMA)
     logger.debug("external id changes: %s", df_changes)
 
-    return df.pipe(_update_or_append, df_changes).pipe(_align_id_col)
+    return df.pipe(_update_or_append, df_changes).pipe(align_id_col)
 
 
 @click.command()
