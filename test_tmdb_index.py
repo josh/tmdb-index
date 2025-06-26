@@ -1,6 +1,10 @@
-import polars as pl
+import datetime
+import os
 
-from tmdb_index import align_id_col, update_or_append
+import polars as pl
+import pytest
+
+from tmdb_index import align_id_col, tmdb_changes, update_or_append
 
 
 def test_align_id_col_fills_missing_ids() -> None:
@@ -28,3 +32,33 @@ def test_update_or_append_merges_and_updates() -> None:
     result = update_or_append(df1, df2)
     assert result.sort("id")["value"].to_list() == [10, 200, 30]
     assert result.sort("id")["id"].to_list() == [0, 1, 2]
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_tmdb_changes() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    df = tmdb_changes(
+        tmdb_type="movie",
+        date=datetime.date(2025, 1, 1),
+        tmdb_api_key=tmdb_api_key,
+    )
+    assert df.columns == ["id", "date", "adult"]
+    assert df.shape == (100, 3)
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_tmdb_changes_future_date() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    df = tmdb_changes(
+        tmdb_type="movie",
+        date=datetime.date.today() + datetime.timedelta(days=2),
+        tmdb_api_key=tmdb_api_key,
+    )
+    assert df.columns == ["id", "date", "adult"]
+    assert df.shape == (0, 3)

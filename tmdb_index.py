@@ -62,7 +62,7 @@ _TMDB_CHANGES_SCHEMA = pl.Schema(
 )
 
 
-def _tmdb_changes(
+def tmdb_changes(
     tmdb_type: TMDB_TYPE,
     date: datetime.date,
     tmdb_api_key: str,
@@ -104,12 +104,12 @@ def _insert_tmdb_latest_changes(
     )
 
     for d in dates_lst:
-        tmdb_changes = _tmdb_changes(
+        changes = tmdb_changes(
             tmdb_type=tmdb_type,
             date=d,
             tmdb_api_key=tmdb_api_key,
         )
-        df = df.pipe(update_or_append, tmdb_changes)
+        df = df.pipe(update_or_append, changes)
 
     return df.pipe(align_id_col)
 
