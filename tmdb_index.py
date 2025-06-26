@@ -91,19 +91,7 @@ def insert_tmdb_latest_changes(
     tmdb_type: TMDB_TYPE,
     tmdb_api_key: str,
 ) -> pl.DataFrame:
-    dates_df = df.select(
-        pl.date_range(
-            pl.col("date").max().dt.offset_by("-1d").alias("start_date"),
-            datetime.date.today(),
-            interval="1d",
-            eager=False,
-        ).alias("date")
-    )
-    dates_lst: list[datetime.date] = (
-        dates_df.select(pl.col("date")).to_series().to_list()
-    )
-
-    for d in dates_lst:
+    for d in tmdb_changes_backfill_date_range(df):
         changes = tmdb_changes(
             tmdb_type=tmdb_type,
             date=d,
@@ -112,6 +100,18 @@ def insert_tmdb_latest_changes(
         df = df.pipe(update_or_append, changes)
 
     return df.pipe(align_id_col)
+
+
+def tmdb_changes_backfill_date_range(df: pl.DataFrame) -> list[datetime.date]:
+    dates_df = df.select(
+        pl.date_range(
+            pl.col("date").max().dt.offset_by("-1d").alias("start_date"),
+            datetime.date.today(),
+            interval="1d",
+            eager=False,
+        ).alias("date")
+    )
+    return dates_df.select(pl.col("date")).to_series().to_list()
 
 
 def _fetch_jsonl_gz(url: str) -> Iterator[Any]:

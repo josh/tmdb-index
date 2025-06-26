@@ -8,6 +8,7 @@ from tmdb_index import (
     align_id_col,
     insert_tmdb_latest_changes,
     tmdb_changes,
+    tmdb_changes_backfill_date_range,
     tmdb_export,
     update_or_append,
 )
@@ -107,12 +108,44 @@ def test_insert_tmdb_latest_changes() -> None:
         tmdb_api_key=tmdb_api_key,
     )
     assert df2.columns == ["id", "date", "adult"]
-    dates: list[datetime.date | None] = (
-        df2["date"].drop_nulls().unique().sort().to_list()
-    )
+    assert len(df2) > len(df)
+
+
+def test_tmdb_changes_backfill_date_range() -> None:
+    d = datetime.date.today()
+    df = pl.DataFrame({"date": [d]})
+    dates = tmdb_changes_backfill_date_range(df)
     assert dates == [
-        initial_date - datetime.timedelta(days=1),
-        initial_date,
-        initial_date + datetime.timedelta(days=1),
-        initial_date + datetime.timedelta(days=2),
+        d - datetime.timedelta(days=1),
+        d,
+    ], dates
+
+    d = datetime.date.today() + datetime.timedelta(days=-1)
+    df = pl.DataFrame({"date": [d]})
+    dates = tmdb_changes_backfill_date_range(df)
+    assert dates == [
+        d - datetime.timedelta(days=1),
+        d,
+        d + datetime.timedelta(days=1),
+    ], dates
+
+    d = datetime.date.today() + datetime.timedelta(days=-2)
+    df = pl.DataFrame({"date": [d]})
+    dates = tmdb_changes_backfill_date_range(df)
+    assert dates == [
+        d - datetime.timedelta(days=1),
+        d,
+        d + datetime.timedelta(days=1),
+        d + datetime.timedelta(days=2),
+    ], dates
+
+    d = datetime.date.today() + datetime.timedelta(days=-3)
+    df = pl.DataFrame({"date": [d]})
+    dates = tmdb_changes_backfill_date_range(df)
+    assert dates == [
+        d - datetime.timedelta(days=1),
+        d,
+        d + datetime.timedelta(days=1),
+        d + datetime.timedelta(days=2),
+        d + datetime.timedelta(days=3),
     ], dates
