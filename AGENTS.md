@@ -51,6 +51,12 @@ You can automatically fix most formatting issues with:
 $ uv tool run ruff format .
 ```
 
+Functions should be sorted in dependency order with:
+
+```sh
+$ uv tool run ssort .
+```
+
 ## Code Quality
 
 You can generate a code coverage report while running the test suite with:
