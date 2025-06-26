@@ -103,15 +103,13 @@ def insert_tmdb_latest_changes(
 
 
 def tmdb_changes_backfill_date_range(df: pl.DataFrame) -> list[datetime.date]:
-    dates_df = df.select(
-        pl.date_range(
-            pl.col("date").max().dt.offset_by("-1d").alias("start_date"),
-            datetime.date.today(),
-            interval="1d",
-            eager=False,
-        ).alias("date")
-    )
-    return dates_df.select(pl.col("date")).to_series().to_list()
+    max_date = df["date"].max()
+    assert max_date
+    assert isinstance(max_date, datetime.date)
+    start_date = max_date - datetime.timedelta(days=1)
+    end_date = datetime.date.today()
+    days = (end_date - start_date).days + 1
+    return [start_date + datetime.timedelta(days=i) for i in range(days)]
 
 
 def _fetch_jsonl_gz(url: str) -> Iterator[Any]:
