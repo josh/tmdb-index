@@ -150,7 +150,7 @@ def _tmdb_raw_export(tmdb_type: _TMDB_EXPORT_TYPE) -> pl.DataFrame:
     return df
 
 
-def _tmdb_export(tmdb_type: TMDB_TYPE) -> pl.DataFrame:
+def tmdb_export(tmdb_type: TMDB_TYPE) -> pl.DataFrame:
     if tmdb_type == "movie":
         return pl.concat(
             [_tmdb_raw_export("movie"), _tmdb_raw_export("collection")]
@@ -164,7 +164,7 @@ def _tmdb_export(tmdb_type: TMDB_TYPE) -> pl.DataFrame:
 def _insert_tmdb_export_flag(df: pl.DataFrame, tmdb_type: TMDB_TYPE) -> pl.DataFrame:
     return (
         df.drop("in_export")
-        .join(_tmdb_export(tmdb_type), on="id", how="left", coalesce=True)
+        .join(tmdb_export(tmdb_type), on="id", how="left", coalesce=True)
         .with_columns(pl.col("in_export").fill_null(False))
         .select(df.columns)
     )

@@ -4,7 +4,7 @@ import os
 import polars as pl
 import pytest
 
-from tmdb_index import align_id_col, tmdb_changes, update_or_append
+from tmdb_index import align_id_col, tmdb_changes, tmdb_export, update_or_append
 
 
 def test_align_id_col_fills_missing_ids() -> None:
@@ -62,3 +62,21 @@ def test_tmdb_changes_future_date() -> None:
     )
     assert df.columns == ["id", "date", "adult"]
     assert df.shape == (0, 3)
+
+
+def test_tmdb_export_movie() -> None:
+    df = tmdb_export(tmdb_type="movie")
+    assert df.columns == ["id", "in_export"]
+    assert df.shape[0] > 1_000_000
+
+
+def test_tmdb_export_tv() -> None:
+    df = tmdb_export(tmdb_type="tv")
+    assert df.columns == ["id", "in_export"]
+    assert df.shape[0] > 100_000
+
+
+def test_tmdb_export_person() -> None:
+    df = tmdb_export(tmdb_type="person")
+    assert df.columns == ["id", "in_export"]
+    assert df.shape[0] > 1_000_000
