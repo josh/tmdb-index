@@ -4,7 +4,13 @@ import os
 import polars as pl
 import pytest
 
-from tmdb_index import align_id_col, tmdb_changes, tmdb_export, update_or_append
+from tmdb_index import (
+    align_id_col,
+    insert_tmdb_latest_changes,
+    tmdb_changes,
+    tmdb_export,
+    update_or_append,
+)
 
 
 def test_align_id_col_fills_missing_ids() -> None:
@@ -80,3 +86,33 @@ def test_tmdb_export_person() -> None:
     df = tmdb_export(tmdb_type="person")
     assert df.columns == ["id", "in_export"]
     assert df.shape[0] > 1_000_000
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_insert_tmdb_latest_changes() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+
+    initial_date = datetime.date.today() + datetime.timedelta(days=-2)
+    df = tmdb_changes(
+        tmdb_type="movie",
+        date=initial_date,
+        tmdb_api_key=tmdb_api_key,
+    )
+    df2 = insert_tmdb_latest_changes(
+        df,
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+    )
+    assert df2.columns == ["id", "date", "adult"]
+    dates: list[datetime.date | None] = (
+        df2["date"].drop_nulls().unique().sort().to_list()
+    )
+    assert dates == [
+        initial_date - datetime.timedelta(days=1),
+        initial_date,
+        initial_date + datetime.timedelta(days=1),
+        initial_date + datetime.timedelta(days=2),
+    ], dates

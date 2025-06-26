@@ -86,7 +86,7 @@ def tmdb_changes(
     return df
 
 
-def _insert_tmdb_latest_changes(
+def insert_tmdb_latest_changes(
     df: pl.DataFrame,
     tmdb_type: TMDB_TYPE,
     tmdb_api_key: str,
@@ -302,7 +302,7 @@ def main(
     logger.debug("original df: %s", df)
 
     df2 = (
-        df.pipe(_insert_tmdb_latest_changes, tmdb_type, tmdb_api_key)
+        df.pipe(insert_tmdb_latest_changes, tmdb_type, tmdb_api_key)
         .pipe(_insert_tmdb_export_flag, tmdb_type)
         .pipe(_insert_tmdb_external_ids, tmdb_type, tmdb_api_key)
     )
