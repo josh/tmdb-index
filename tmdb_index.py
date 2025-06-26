@@ -115,6 +115,12 @@ def tmdb_changes_backfill_date_range(df: pl.DataFrame) -> list[date]:
 def _fetch_jsonl_gz(url: str) -> Iterator[Any]:
     req = urllib.request.Request(url)
     with urllib.request.urlopen(req, timeout=10) as response:
+        logger.debug(
+            "_fetch_jsonl_gz(%s): %s %s",
+            url,
+            response.status,
+            response.reason,
+        )
         with gzip.open(response, mode="rb") as gz:
             for line in gz:
                 yield json.loads(line.decode("utf-8"))
