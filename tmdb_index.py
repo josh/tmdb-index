@@ -45,7 +45,7 @@ def align_id_col(df: pl.DataFrame) -> pl.DataFrame:
     return id_df.join(df, on="id", how="left", coalesce=True).select(df.columns)
 
 
-def _update_or_append(df: pl.DataFrame, other: pl.DataFrame) -> pl.DataFrame:
+def update_or_append(df: pl.DataFrame, other: pl.DataFrame) -> pl.DataFrame:
     other_cols = list(other.columns)
     other_cols.remove("id")
     other = other.join(df.drop(other_cols), on="id", how="left", coalesce=True).select(
@@ -109,7 +109,7 @@ def _insert_tmdb_latest_changes(
             date=d,
             tmdb_api_key=tmdb_api_key,
         )
-        df = df.pipe(_update_or_append, tmdb_changes)
+        df = df.pipe(update_or_append, tmdb_changes)
 
     return df.pipe(align_id_col)
 
@@ -254,7 +254,7 @@ def _insert_tmdb_external_ids(
     df_changes = pl.from_dicts(data, schema=_EXTERNAL_IDS_RESPONSE_SCHEMA)
     logger.debug("external id changes: %s", df_changes)
 
-    return df.pipe(_update_or_append, df_changes).pipe(align_id_col)
+    return df.pipe(update_or_append, df_changes).pipe(align_id_col)
 
 
 @click.command()
