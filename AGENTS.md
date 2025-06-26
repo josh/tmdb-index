@@ -53,6 +53,12 @@ $ uv tool run ruff format .
 
 ## Code Quality
 
+You can generate a code coverage report while running the test suite with:
+
+```sh
+$ uv run pytest --cov=tmdb_index --cov-report=term-missing .
+```
+
 Optionally scan for dead code with vulture:
 
 ```sh
