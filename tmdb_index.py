@@ -168,7 +168,7 @@ def _insert_tmdb_export_flag(df: pl.DataFrame, tmdb_type: TMDB_TYPE) -> pl.DataF
     )
 
 
-def _tmdb_external_ids(
+def tmdb_external_ids(
     tmdb_type: TMDB_TYPE,
     tmdb_id: int,
     tmdb_api_key: str,
@@ -225,7 +225,7 @@ def _tmdb_external_ids_iter(
     tmdb_api_key: str,
 ) -> Iterator[dict[str, Any]]:
     for tmdb_id in tmdb_ids:
-        yield _tmdb_external_ids(
+        yield tmdb_external_ids(
             tmdb_type=tmdb_type,
             tmdb_id=tmdb_id,
             tmdb_api_key=tmdb_api_key,

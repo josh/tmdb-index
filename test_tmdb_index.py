@@ -1,5 +1,5 @@
-import datetime
 import os
+from datetime import UTC, date, datetime, timedelta
 
 import polars as pl
 import pytest
@@ -10,6 +10,7 @@ from tmdb_index import (
     tmdb_changes,
     tmdb_changes_backfill_date_range,
     tmdb_export,
+    tmdb_external_ids,
     update_or_append,
 )
 
@@ -49,7 +50,7 @@ def test_tmdb_changes() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df = tmdb_changes(
         tmdb_type="movie",
-        date=datetime.date(2025, 1, 1),
+        date=date(2025, 1, 1),
         tmdb_api_key=tmdb_api_key,
     )
     assert df.columns == ["id", "date", "adult"]
@@ -64,7 +65,7 @@ def test_tmdb_changes_future_date() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df = tmdb_changes(
         tmdb_type="movie",
-        date=datetime.date.today() + datetime.timedelta(days=2),
+        date=date.today() + timedelta(days=2),
         tmdb_api_key=tmdb_api_key,
     )
     assert df.columns == ["id", "date", "adult"]
@@ -96,7 +97,7 @@ def test_tmdb_export_person() -> None:
 def test_insert_tmdb_latest_changes() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
 
-    initial_date = datetime.date.today() + datetime.timedelta(days=-2)
+    initial_date = date.today() + timedelta(days=-2)
     df = tmdb_changes(
         tmdb_type="movie",
         date=initial_date,
@@ -112,40 +113,62 @@ def test_insert_tmdb_latest_changes() -> None:
 
 
 def test_tmdb_changes_backfill_date_range() -> None:
-    d = datetime.date.today()
+    d = date.today()
     df = pl.DataFrame({"date": [d]})
     dates = tmdb_changes_backfill_date_range(df)
     assert dates == [
-        d - datetime.timedelta(days=1),
+        d - timedelta(days=1),
         d,
     ], dates
 
-    d = datetime.date.today() + datetime.timedelta(days=-1)
+    d = date.today() + timedelta(days=-1)
     df = pl.DataFrame({"date": [d]})
     dates = tmdb_changes_backfill_date_range(df)
     assert dates == [
-        d - datetime.timedelta(days=1),
+        d - timedelta(days=1),
         d,
-        d + datetime.timedelta(days=1),
+        d + timedelta(days=1),
     ], dates
 
-    d = datetime.date.today() + datetime.timedelta(days=-2)
+    d = date.today() + timedelta(days=-2)
     df = pl.DataFrame({"date": [d]})
     dates = tmdb_changes_backfill_date_range(df)
     assert dates == [
-        d - datetime.timedelta(days=1),
+        d - timedelta(days=1),
         d,
-        d + datetime.timedelta(days=1),
-        d + datetime.timedelta(days=2),
+        d + timedelta(days=1),
+        d + timedelta(days=2),
     ], dates
 
-    d = datetime.date.today() + datetime.timedelta(days=-3)
+    d = date.today() + timedelta(days=-3)
     df = pl.DataFrame({"date": [d]})
     dates = tmdb_changes_backfill_date_range(df)
     assert dates == [
-        d - datetime.timedelta(days=1),
+        d - timedelta(days=1),
         d,
-        d + datetime.timedelta(days=1),
-        d + datetime.timedelta(days=2),
-        d + datetime.timedelta(days=3),
+        d + timedelta(days=1),
+        d + timedelta(days=2),
+        d + timedelta(days=3),
     ], dates
+
+
+_FEW_MINUTES_AGO: datetime = datetime.now(UTC) - timedelta(minutes=5)
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_tmdb_external_ids() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    result = tmdb_external_ids(
+        tmdb_type="movie",
+        tmdb_id=603,
+        tmdb_api_key=tmdb_api_key,
+    )
+    assert result["id"] == 603
+    assert result["success"] is True
+    assert result["retrieved_at"] >= _FEW_MINUTES_AGO
+    assert result["imdb_numeric_id"] == 133093
+    assert result["tvdb_id"] is None
+    assert result["wikidata_numeric_id"] == 83495
