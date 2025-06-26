@@ -1,10 +1,10 @@
-import datetime
 import gzip
 import json
 import logging
 import re
 import urllib.request
 from collections.abc import Iterable, Iterator
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
 import click
@@ -64,11 +64,11 @@ _TMDB_CHANGES_SCHEMA = pl.Schema(
 
 def tmdb_changes(
     tmdb_type: TMDB_TYPE,
-    date: datetime.date,
+    date: date,
     tmdb_api_key: str,
 ) -> pl.DataFrame:
     start_date = date.strftime("%Y-%m-%d")
-    end_date = (date + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    end_date = (date + timedelta(days=1)).strftime("%Y-%m-%d")
     url = f"https://api.themoviedb.org/3/{tmdb_type}/changes?start_date={start_date}&end_date={end_date}&api_key={tmdb_api_key}"
 
     req = urllib.request.Request(url)
@@ -102,14 +102,14 @@ def insert_tmdb_latest_changes(
     return df.pipe(align_id_col)
 
 
-def tmdb_changes_backfill_date_range(df: pl.DataFrame) -> list[datetime.date]:
+def tmdb_changes_backfill_date_range(df: pl.DataFrame) -> list[date]:
     max_date = df["date"].max()
     assert max_date
-    assert isinstance(max_date, datetime.date)
-    start_date = max_date - datetime.timedelta(days=1)
-    end_date = datetime.date.today()
+    assert isinstance(max_date, date)
+    start_date = max_date - timedelta(days=1)
+    end_date = date.today()
     days = (end_date - start_date).days + 1
-    return [start_date + datetime.timedelta(days=i) for i in range(days)]
+    return [start_date + timedelta(days=i) for i in range(days)]
 
 
 def _fetch_jsonl_gz(url: str) -> Iterator[Any]:
@@ -120,12 +120,12 @@ def _fetch_jsonl_gz(url: str) -> Iterator[Any]:
                 yield json.loads(line.decode("utf-8"))
 
 
-def _export_date() -> datetime.date:
-    now = datetime.datetime.now(datetime.UTC)
+def _export_date() -> date:
+    now = datetime.now(UTC)
     if now.hour >= 8:
         return now.date()
     else:
-        return (now - datetime.timedelta(days=1)).date()
+        return (now - timedelta(days=1)).date()
 
 
 _TMDB_EXPORT_TYPE = Literal["movie", "tv_series", "person", "collection"]
@@ -176,7 +176,7 @@ def tmdb_external_ids(
     url = f"https://api.themoviedb.org/3/{tmdb_type}/{tmdb_id}/external_ids?api_key={tmdb_api_key}"
 
     success: bool = False
-    retrieved_at: datetime.datetime = datetime.datetime.now(datetime.UTC)
+    retrieved_at: datetime = datetime.now(UTC)
     imdb_numeric_id: int | None = None
     tvdb_id: int | None = None
     wikidata_numeric_id: int | None = None
