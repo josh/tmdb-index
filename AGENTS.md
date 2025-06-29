@@ -43,6 +43,8 @@ Run the test suite with:
 $ uv run pytest
 ```
 
+Avoid [pytest's monkeypatching and mocking features](https://docs.pytest.org/en/stable/how-to/monkeypatch.html). Tests may make real network connections to the API service.
+
 ## Formatting
 
 You can automatically fix most formatting issues with:
