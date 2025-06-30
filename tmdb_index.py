@@ -349,6 +349,10 @@ def main(
         .pipe(_insert_tmdb_export_flag, tmdb_type)
         .pipe(_insert_tmdb_external_ids, tmdb_type, tmdb_api_key)
     )
+    if df2.height < df.height:
+        logger.warning(
+            "df2 height %s is smaller than df height %s", df2.height, df.height
+        )
     logger.info(df2)
     logger.info(change_summary(df, df2))
 
