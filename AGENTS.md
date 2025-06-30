@@ -72,3 +72,7 @@ Optionally scan for dead code with vulture:
 ```sh
 $ uv tool run vulture --exclude .venv/ .
 ```
+
+## Comments and Docstrings
+
+Avoid superfluous comments and Python docstrings. Only include them when they add value or clarify complex logic.
