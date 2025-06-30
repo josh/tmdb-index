@@ -7,6 +7,7 @@ import pytest
 from tmdb_index import (
     align_id_col,
     change_summary,
+    fetch_jsonl_gz,
     insert_tmdb_latest_changes,
     tmdb_changes,
     tmdb_changes_backfill_date_range,
@@ -67,6 +68,20 @@ def test_change_summary_identical_rows() -> None:
     )
     summary = change_summary(df1, df2)
     assert summary == "+0 -0 ~0"
+
+
+def test_fetch_jsonl_gz_gzip_response() -> None:
+    d = date.today() - timedelta(days=3)
+    url = (
+        f"http://files.tmdb.org/p/exports/keyword_ids_{d.strftime('%m_%d_%Y')}.json.gz"
+    )
+    gen = fetch_jsonl_gz(url)
+    result = [next(gen) for _ in range(100)]
+    assert hasattr(gen, "close")
+    gen.close()
+
+    assert len(result) == 100
+    assert set(result[0]) == {"id", "name"}
 
 
 @pytest.mark.skipif(
