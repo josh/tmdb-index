@@ -121,18 +121,18 @@ def insert_tmdb_latest_changes(
     return df.pipe(align_id_col)
 
 
-def _fetch_jsonl_gz(url: str) -> Iterator[Any]:
+def fetch_jsonl_gz(url: str) -> Iterator[Any]:
     req = urllib.request.Request(url)
     with urllib.request.urlopen(req, timeout=10) as response:
         logger.debug(
-            "_fetch_jsonl_gz(%s): %s %s",
+            "fetch_jsonl_gz(%s): %s %s",
             url,
             response.status,
             response.reason,
         )
-        with gzip.open(response, mode="rb") as gz:
+        with gzip.open(response, mode="rt", encoding="utf-8") as gz:
             for line in gz:
-                yield json.loads(line.decode("utf-8"))
+                yield json.loads(line)
 
 
 def _export_date() -> date:
@@ -150,7 +150,7 @@ def _tmdb_raw_export(tmdb_type: _TMDB_EXPORT_TYPE) -> pl.DataFrame:
     date = _export_date()
     logger.debug("_export_date: %s", date)
     url = f"http://files.tmdb.org/p/exports/{tmdb_type}_ids_{date.strftime('%m_%d_%Y')}.json.gz"
-    data = _fetch_jsonl_gz(url)
+    data = fetch_jsonl_gz(url)
     df = (
         pl.from_dicts(data, schema=[("id", pl.UInt32)])
         .sort("id")
