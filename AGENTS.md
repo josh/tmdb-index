@@ -34,7 +34,7 @@ $ uv tool run ruff check .
 Check type correctness with mypy:
 
 ```sh
-$ uv tool run mypy .
+$ uv run mypy .
 ```
 
 Run the test suite with:
