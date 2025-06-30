@@ -5,10 +5,13 @@ on:
   #   - cron: "0 0 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
-  run:
+  update:
     runs-on: ubuntu-24.04
-    concurrency: tmdb_${{ matrix.type }}
 
     strategy:
       fail-fast: false
@@ -28,13 +31,57 @@ jobs:
 
       - name: Download from S3
         run: |
-          aws s3 cp --region us-east-1 --no-sign-request "s3://wikidatabots/tmdb/${TMDB_TYPE}.parquet" "tmdb.parquet"
+          aws s3 cp --region us-east-1 --no-sign-request "s3://wikidatabots/tmdb/${TMDB_TYPE}.parquet" "tmdb-${TMDB_TYPE}.parquet"
         env:
           TMDB_TYPE: ${{ matrix.type }}
 
       - name: Update index
         run: |
-          uv run tmdb_index.py --verbose ./tmdb.parquet
+          uv run tmdb_index.py --verbose ./tmdb-${TMDB_TYPE}.parquet
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           TMDB_TYPE: ${{ matrix.type }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmdb-${{ matrix.type }}
+          path: tmdb-${{ matrix.type }}.parquet
+          retention-days: 7
+
+  deploy:
+    runs-on: ubuntu-24.04
+    needs: update
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download parquet artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: data/
+
+      - name: Flatten directory structure
+        run: |
+          find data -name "*.parquet" -exec mv {} data/ \;
+          find data -type d -empty -delete
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: data/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
