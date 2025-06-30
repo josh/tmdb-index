@@ -6,6 +6,7 @@ import pytest
 
 from tmdb_index import (
     align_id_col,
+    change_summary,
     insert_tmdb_latest_changes,
     tmdb_changes,
     tmdb_changes_backfill_date_range,
@@ -40,6 +41,32 @@ def test_update_or_append_merges_and_updates() -> None:
     result = update_or_append(df1, df2)
     assert result.sort("id")["value"].to_list() == [10, 200, 30]
     assert result.sort("id")["id"].to_list() == [0, 1, 2]
+
+
+def test_change_summary_reports_diffs() -> None:
+    df1 = pl.DataFrame(
+        {"id": [0, 1], "value": [10, 20]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
+    )
+    df2 = pl.DataFrame(
+        {"id": [1, 2], "value": [200, 30]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
+    )
+    summary = change_summary(df1, df2)
+    assert summary == "+1 -1 ~1"
+
+
+def test_change_summary_identical_rows() -> None:
+    df1 = pl.DataFrame(
+        {"id": [0], "value": [10]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
+    )
+    df2 = pl.DataFrame(
+        {"id": [0], "value": [10]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
+    )
+    summary = change_summary(df1, df2)
+    assert summary == "+0 -0 ~0"
 
 
 @pytest.mark.skipif(

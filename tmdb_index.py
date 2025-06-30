@@ -54,6 +54,15 @@ def update_or_append(df: pl.DataFrame, other: pl.DataFrame) -> pl.DataFrame:
     return pl.concat([df, other]).unique(subset="id", keep="last", maintain_order=True)
 
 
+def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> str:
+    added = df_new.join(df_old.select("id"), on="id", how="anti").height
+    removed = df_old.join(df_new.select("id"), on="id", how="anti").height
+    common = df_old.join(df_new.select("id"), on="id", how="semi").height
+    unchanged = df_old.join(df_new, on=df_old.columns, how="inner").height
+    updated = common - unchanged
+    return f"+{added} -{removed} ~{updated}"
+
+
 _TMDB_CHANGES_SCHEMA = pl.Schema(
     [
         ("id", pl.UInt32),
@@ -86,6 +95,16 @@ def tmdb_changes(
     return df
 
 
+def tmdb_changes_backfill_date_range(df: pl.DataFrame) -> list[date]:
+    max_date = df["date"].max()
+    assert max_date
+    assert isinstance(max_date, date)
+    start_date = max_date - timedelta(days=1)
+    end_date = date.today()
+    days = (end_date - start_date).days + 1
+    return [start_date + timedelta(days=i) for i in range(days)]
+
+
 def insert_tmdb_latest_changes(
     df: pl.DataFrame,
     tmdb_type: TMDB_TYPE,
@@ -100,16 +119,6 @@ def insert_tmdb_latest_changes(
         df = df.pipe(update_or_append, changes)
 
     return df.pipe(align_id_col)
-
-
-def tmdb_changes_backfill_date_range(df: pl.DataFrame) -> list[date]:
-    max_date = df["date"].max()
-    assert max_date
-    assert isinstance(max_date, date)
-    start_date = max_date - timedelta(days=1)
-    end_date = date.today()
-    days = (end_date - start_date).days + 1
-    return [start_date + timedelta(days=i) for i in range(days)]
 
 
 def _fetch_jsonl_gz(url: str) -> Iterator[Any]:
@@ -311,6 +320,7 @@ def main(
         .pipe(_insert_tmdb_external_ids, tmdb_type, tmdb_api_key)
     )
     logger.info(df2)
+    logger.info(change_summary(df, df2))
 
     assert df.schema == df2.schema, f"{df.schema} != {df2.schema}"
 
