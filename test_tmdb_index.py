@@ -7,6 +7,8 @@ import pytest
 from tmdb_index import (
     align_id_col,
     change_summary,
+    export_available,
+    export_date,
     fetch_jsonl_gz,
     insert_tmdb_latest_changes,
     tmdb_changes,
@@ -82,6 +84,26 @@ def test_fetch_jsonl_gz_gzip_response() -> None:
 
     assert len(result) == 100
     assert set(result[0]) == {"id", "name"}
+
+
+def test_export_date_before_8am_returns_previous_day() -> None:
+    now = datetime(2024, 1, 2, 7, 59, tzinfo=UTC)
+    assert export_date(now) == date(2024, 1, 1)
+
+
+def test_export_date_after_8am_returns_current_day() -> None:
+    now = datetime(2024, 1, 2, 8, 0, tzinfo=UTC)
+    assert export_date(now) == date(2024, 1, 2)
+
+
+def test_export_available_recent_date_true() -> None:
+    recent = date.today() - timedelta(days=3)
+    assert export_available("movie", recent) is True
+
+
+def test_export_available_old_date_false() -> None:
+    old = date.today() - timedelta(days=365)
+    assert export_available("movie", old) is False
 
 
 @pytest.mark.skipif(

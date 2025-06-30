@@ -135,21 +135,51 @@ def fetch_jsonl_gz(url: str) -> Iterator[Any]:
                 yield json.loads(line)
 
 
-def _export_date() -> date:
-    now = datetime.now(UTC)
-    if now.hour >= 8:
-        return now.date()
-    else:
+def export_date(now: datetime | None = None) -> date:
+    if now is None:
+        now = datetime.now(UTC)
+
+    if 0 <= now.hour < 8:
         return (now - timedelta(days=1)).date()
+
+    return now.date()
 
 
 _TMDB_EXPORT_TYPE = Literal["movie", "tv_series", "person", "collection"]
 
 
+def export_available(tmdb_type: _TMDB_EXPORT_TYPE, d: date) -> bool:
+    url = (
+        f"http://files.tmdb.org/p/exports/"
+        f"{tmdb_type}_ids_{d.strftime('%m_%d_%Y')}.json.gz"
+    )
+
+    req = urllib.request.Request(url, method="HEAD")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            status: int = getattr(response, "status", 0)
+            return status == 200
+    except Exception as exc:
+        logger.warning("export_available(%s, %s): %s", tmdb_type, d, exc)
+        return False
+
+
 def _tmdb_raw_export(tmdb_type: _TMDB_EXPORT_TYPE) -> pl.DataFrame:
-    date = _export_date()
-    logger.debug("_export_date: %s", date)
-    url = f"http://files.tmdb.org/p/exports/{tmdb_type}_ids_{date.strftime('%m_%d_%Y')}.json.gz"
+    date = export_date()
+    logger.debug("export_date: %s", date)
+
+    if not export_available(tmdb_type, date):
+        logger.warning("export unavailable for %s on %s", tmdb_type, date)
+        date2 = date - timedelta(days=1)
+        if export_available(tmdb_type, date2):
+            date = date2
+        else:
+            logger.warning("export unavailable for %s on %s", tmdb_type, date2)
+
+    url = (
+        f"http://files.tmdb.org/p/exports/"
+        f"{tmdb_type}_ids_{date.strftime('%m_%d_%Y')}.json.gz"
+    )
     data = fetch_jsonl_gz(url)
     df = (
         pl.from_dicts(data, schema=[("id", pl.UInt32)])
