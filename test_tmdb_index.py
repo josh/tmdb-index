@@ -180,7 +180,7 @@ def test_insert_tmdb_latest_changes() -> None:
 def test_tmdb_changes_backfill_date_range() -> None:
     d = date.today()
     df = pl.DataFrame({"date": [d]})
-    dates = tmdb_changes_backfill_date_range(df)
+    dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
     assert dates == [
         d - timedelta(days=1),
         d,
@@ -188,7 +188,7 @@ def test_tmdb_changes_backfill_date_range() -> None:
 
     d = date.today() + timedelta(days=-1)
     df = pl.DataFrame({"date": [d]})
-    dates = tmdb_changes_backfill_date_range(df)
+    dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
     assert dates == [
         d - timedelta(days=1),
         d,
@@ -197,7 +197,7 @@ def test_tmdb_changes_backfill_date_range() -> None:
 
     d = date.today() + timedelta(days=-2)
     df = pl.DataFrame({"date": [d]})
-    dates = tmdb_changes_backfill_date_range(df)
+    dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
     assert dates == [
         d - timedelta(days=1),
         d,
@@ -207,7 +207,7 @@ def test_tmdb_changes_backfill_date_range() -> None:
 
     d = date.today() + timedelta(days=-3)
     df = pl.DataFrame({"date": [d]})
-    dates = tmdb_changes_backfill_date_range(df)
+    dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
     assert dates == [
         d - timedelta(days=1),
         d,
@@ -215,6 +215,17 @@ def test_tmdb_changes_backfill_date_range() -> None:
         d + timedelta(days=2),
         d + timedelta(days=3),
     ], dates
+
+
+def test_tmdb_changes_backfill_date_range_empty_df() -> None:
+    df = pl.DataFrame({"date": []}, schema={"date": pl.Date})
+    dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
+    expected_start = date(2012, 10, 5)
+    expected_end = date.today()
+    expected_days = (expected_end - expected_start).days + 1
+    assert len(dates) == expected_days
+    assert dates[0] == expected_start
+    assert dates[-1] == expected_end
 
 
 _FEW_MINUTES_AGO: datetime = datetime.now(UTC) - timedelta(minutes=5)

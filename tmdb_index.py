@@ -106,11 +106,16 @@ def tmdb_changes(
     return df
 
 
-def tmdb_changes_backfill_date_range(df: pl.DataFrame) -> list[date]:
-    max_date = df["date"].max()
-    assert max_date
-    assert isinstance(max_date, date)
-    start_date = max_date - timedelta(days=1)
+def tmdb_changes_backfill_date_range(
+    df: pl.DataFrame,
+    tmdb_type: TMDB_TYPE,
+) -> list[date]:
+    start_date = _TMDB_CHANGES_EPOCH[tmdb_type]
+    if not df.is_empty():
+        max_date = df["date"].max()
+        assert max_date
+        assert isinstance(max_date, date)
+        start_date = max_date - timedelta(days=1)
     end_date = date.today()
     days = (end_date - start_date).days + 1
     return [start_date + timedelta(days=i) for i in range(days)]
@@ -122,7 +127,8 @@ def insert_tmdb_latest_changes(
     tmdb_api_key: str,
     days_limit: int,
 ) -> pl.DataFrame:
-    for d in islice(tmdb_changes_backfill_date_range(df), days_limit):
+    date_range = tmdb_changes_backfill_date_range(df, tmdb_type=tmdb_type)
+    for d in islice(date_range, days_limit):
         changes = tmdb_changes(
             tmdb_type=tmdb_type,
             date=d,
