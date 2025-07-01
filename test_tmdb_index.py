@@ -171,6 +171,7 @@ def test_insert_tmdb_latest_changes() -> None:
         df,
         tmdb_type="movie",
         tmdb_api_key=tmdb_api_key,
+        days_limit=7,
     )
     assert df2.columns == ["id", "date", "adult"]
     assert len(df2) > len(df)

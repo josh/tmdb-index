@@ -5,6 +5,7 @@ import re
 import urllib.request
 from collections.abc import Iterable, Iterator
 from datetime import UTC, date, datetime, timedelta
+from itertools import islice
 from typing import Any, Literal
 
 import click
@@ -70,12 +71,22 @@ _TMDB_CHANGES_SCHEMA = pl.Schema(
     ]
 )
 
+_TMDB_CHANGES_EPOCH: dict[TMDB_TYPE, date] = {
+    "movie": date(2012, 10, 5),
+    "tv": date(2012, 12, 31),
+    "person": date(2012, 10, 5),
+}
+
 
 def tmdb_changes(
     tmdb_type: TMDB_TYPE,
     date: date,
     tmdb_api_key: str,
 ) -> pl.DataFrame:
+    assert date >= _TMDB_CHANGES_EPOCH[tmdb_type], (
+        f"Date must be after {_TMDB_CHANGES_EPOCH[tmdb_type]}"
+    )
+
     start_date = date.strftime("%Y-%m-%d")
     end_date = (date + timedelta(days=1)).strftime("%Y-%m-%d")
     url = f"https://api.themoviedb.org/3/{tmdb_type}/changes?start_date={start_date}&end_date={end_date}&api_key={tmdb_api_key}"
@@ -109,8 +120,9 @@ def insert_tmdb_latest_changes(
     df: pl.DataFrame,
     tmdb_type: TMDB_TYPE,
     tmdb_api_key: str,
+    days_limit: int,
 ) -> pl.DataFrame:
-    for d in tmdb_changes_backfill_date_range(df):
+    for d in islice(tmdb_changes_backfill_date_range(df), days_limit):
         changes = tmdb_changes(
             tmdb_type=tmdb_type,
             date=d,
@@ -313,25 +325,23 @@ def process(
     tmdb_api_key: str,
     backfill_limit: int,
     refresh_limit: int,
+    changes_days_limit: int,
 ) -> pl.DataFrame:
-    return (
-        df.pipe(
-            insert_tmdb_latest_changes,
-            tmdb_type=tmdb_type,
-            tmdb_api_key=tmdb_api_key,
-        )
-        .pipe(
-            _insert_tmdb_export_flag,
-            tmdb_type=tmdb_type,
-        )
-        .pipe(
-            _insert_tmdb_external_ids,
-            tmdb_type=tmdb_type,
-            tmdb_api_key=tmdb_api_key,
-            backfill_limit=backfill_limit,
-            refresh_limit=refresh_limit,
-        )
+    df = insert_tmdb_latest_changes(
+        df,
+        tmdb_type=tmdb_type,
+        tmdb_api_key=tmdb_api_key,
+        days_limit=changes_days_limit,
     )
+    df = _insert_tmdb_export_flag(df, tmdb_type=tmdb_type)
+    df = _insert_tmdb_external_ids(
+        df,
+        tmdb_type=tmdb_type,
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=backfill_limit,
+        refresh_limit=refresh_limit,
+    )
+    return df
 
 
 @click.command()
@@ -378,6 +388,13 @@ def process(
     envvar="TMDB_REFRESH_LIMIT",
     help="Number of old rows to refresh",
 )
+@click.option(
+    "--days-limit",
+    type=int,
+    default=30,
+    envvar="TMDB_DAYS_LIMIT",
+    help="Limit of changes days to backfill",
+)
 def main(
     filename: str,
     tmdb_type: TMDB_TYPE,
@@ -386,6 +403,7 @@ def main(
     verbose: bool,
     backfill_limit: int,
     refresh_limit: int,
+    days_limit: int,
 ) -> None:
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
 
@@ -400,6 +418,7 @@ def main(
         tmdb_api_key=tmdb_api_key,
         backfill_limit=backfill_limit,
         refresh_limit=refresh_limit,
+        changes_days_limit=days_limit,
     )
 
     if df2.height < df.height:
