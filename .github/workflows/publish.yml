@@ -29,9 +29,9 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Download from S3
+      - name: Download from gh-pages
         run: |
-          aws s3 cp --region us-east-1 --no-sign-request "s3://wikidatabots/tmdb/${TMDB_TYPE}.parquet" "tmdb-${TMDB_TYPE}.parquet"
+          curl --fail --silent "https://josh.github.io/tmdb-index/tmdb-${TMDB_TYPE}.parquet" --output "tmdb-${TMDB_TYPE}.parquet"
         env:
           TMDB_TYPE: ${{ matrix.type }}
 

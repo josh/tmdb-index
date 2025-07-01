@@ -1,0 +1,43 @@
+name: Republish
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    needs: update
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download from S3
+        run: |
+          mkdir data/
+          aws s3 cp --region us-east-1 --no-sign-request s3://wikidatabots/tmdb/movie.parquet data/tmdb-movie.parquet
+          aws s3 cp --region us-east-1 --no-sign-request s3://wikidatabots/tmdb/tv.parquet data/tmdb-tv.parquet
+          aws s3 cp --region us-east-1 --no-sign-request s3://wikidatabots/tmdb/person.parquet data/tmdb-person.parquet
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: data/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
