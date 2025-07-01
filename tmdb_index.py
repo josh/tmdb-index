@@ -281,14 +281,17 @@ def _insert_tmdb_external_ids(
     df: pl.DataFrame,
     tmdb_type: TMDB_TYPE,
     tmdb_api_key: str,
+    backfill_limit: int = 10000,
     refresh_limit: int = 1000,
 ) -> pl.DataFrame:
     df_to_update = df.filter(
         # If the tmdb change date is newer than our last retrieved at date
         (pl.col("date") >= pl.col("retrieved_at").dt.round("1d"))
         # Backfill any items we never retrieved
-        # TODO: Though, we should cap this and make it a limit option
-        | (pl.col("retrieved_at").is_null())
+        | (
+            pl.col("retrieved_at").is_null()
+            & (pl.col("retrieved_at").is_not_null().rank("ordinal") <= backfill_limit)
+        )
         # Refresh some of the oldest items
         | (pl.col("retrieved_at").rank("ordinal") <= refresh_limit)
     ).select("id")
@@ -335,6 +338,13 @@ def _insert_tmdb_external_ids(
     help="Verbose output",
 )
 @click.option(
+    "--backfill-limit",
+    type=int,
+    default=10000,
+    envvar="TMDB_BACKFILL_LIMIT",
+    help="Number of never-fetched rows to backfill",
+)
+@click.option(
     "--refresh-limit",
     type=int,
     default=1000,
@@ -347,6 +357,7 @@ def main(
     tmdb_api_key: str,
     dry_run: bool,
     verbose: bool,
+    backfill_limit: int,
     refresh_limit: int,
 ) -> None:
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
@@ -359,7 +370,13 @@ def main(
     df2 = (
         df.pipe(insert_tmdb_latest_changes, tmdb_type, tmdb_api_key)
         .pipe(_insert_tmdb_export_flag, tmdb_type)
-        .pipe(_insert_tmdb_external_ids, tmdb_type, tmdb_api_key, refresh_limit)
+        .pipe(
+            _insert_tmdb_external_ids,
+            tmdb_type,
+            tmdb_api_key,
+            backfill_limit,
+            refresh_limit,
+        )
     )
     if df2.height < df.height:
         logger.warning(
