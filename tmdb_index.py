@@ -307,6 +307,33 @@ def _insert_tmdb_external_ids(
     return df.pipe(update_or_append, df_changes).pipe(align_id_col)
 
 
+def process(
+    df: pl.DataFrame,
+    tmdb_type: TMDB_TYPE,
+    tmdb_api_key: str,
+    backfill_limit: int,
+    refresh_limit: int,
+) -> pl.DataFrame:
+    return (
+        df.pipe(
+            insert_tmdb_latest_changes,
+            tmdb_type=tmdb_type,
+            tmdb_api_key=tmdb_api_key,
+        )
+        .pipe(
+            _insert_tmdb_export_flag,
+            tmdb_type=tmdb_type,
+        )
+        .pipe(
+            _insert_tmdb_external_ids,
+            tmdb_type=tmdb_type,
+            tmdb_api_key=tmdb_api_key,
+            backfill_limit=backfill_limit,
+            refresh_limit=refresh_limit,
+        )
+    )
+
+
 @click.command()
 @click.argument(
     "filename",
@@ -367,17 +394,14 @@ def main(
     df = pl.read_parquet(filename)
     logger.debug("original df: %s", df)
 
-    df2 = (
-        df.pipe(insert_tmdb_latest_changes, tmdb_type, tmdb_api_key)
-        .pipe(_insert_tmdb_export_flag, tmdb_type)
-        .pipe(
-            _insert_tmdb_external_ids,
-            tmdb_type,
-            tmdb_api_key,
-            backfill_limit,
-            refresh_limit,
-        )
+    df2 = process(
+        df=df,
+        tmdb_type=tmdb_type,
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=backfill_limit,
+        refresh_limit=refresh_limit,
     )
+
     if df2.height < df.height:
         logger.warning(
             "df2 height %s is smaller than df height %s", df2.height, df.height
