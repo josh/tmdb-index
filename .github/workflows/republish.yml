@@ -25,9 +25,9 @@ jobs:
       - name: Download from S3
         run: |
           mkdir data/
-          aws s3 cp --region us-east-1 --no-sign-request s3://wikidatabots/tmdb/movie.parquet data/tmdb-movie.parquet
-          aws s3 cp --region us-east-1 --no-sign-request s3://wikidatabots/tmdb/tv.parquet data/tmdb-tv.parquet
-          aws s3 cp --region us-east-1 --no-sign-request s3://wikidatabots/tmdb/person.parquet data/tmdb-person.parquet
+          aws s3 cp --region us-east-1 --no-sign-request --no-progress s3://wikidatabots/tmdb/movie.parquet data/tmdb-movie.parquet
+          aws s3 cp --region us-east-1 --no-sign-request --no-progress s3://wikidatabots/tmdb/tv.parquet data/tmdb-tv.parquet
+          aws s3 cp --region us-east-1 --no-sign-request --no-progress s3://wikidatabots/tmdb/person.parquet data/tmdb-person.parquet
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
