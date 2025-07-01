@@ -10,7 +10,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-24.04
-    needs: update
 
     permissions:
       pages: write
