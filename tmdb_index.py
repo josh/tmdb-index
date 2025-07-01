@@ -277,17 +277,21 @@ def _tmdb_external_ids_iter(
         )
 
 
-_CHANGED = pl.col("date") >= pl.col("retrieved_at").dt.round("1d")
-_NEVER_FETCHED = pl.col("retrieved_at").is_null()
-_OLDEST_METADATA = pl.col("retrieved_at").rank("ordinal") <= 1_000
-
-
 def _insert_tmdb_external_ids(
     df: pl.DataFrame,
     tmdb_type: TMDB_TYPE,
     tmdb_api_key: str,
+    refresh_limit: int = 1000,
 ) -> pl.DataFrame:
-    df_to_update = df.filter(_CHANGED | _NEVER_FETCHED | _OLDEST_METADATA).select("id")
+    df_to_update = df.filter(
+        # If the tmdb change date is newer than our last retrieved at date
+        (pl.col("date") >= pl.col("retrieved_at").dt.round("1d"))
+        # Backfill any items we never retrieved
+        # TODO: Though, we should cap this and make it a limit option
+        | (pl.col("retrieved_at").is_null())
+        # Refresh some of the oldest items
+        | (pl.col("retrieved_at").rank("ordinal") <= refresh_limit)
+    ).select("id")
 
     data = _tmdb_external_ids_iter(
         tmdb_type=tmdb_type,
@@ -330,12 +334,20 @@ def _insert_tmdb_external_ids(
     is_flag=True,
     help="Verbose output",
 )
+@click.option(
+    "--refresh-limit",
+    type=int,
+    default=1000,
+    envvar="TMDB_REFRESH_LIMIT",
+    help="Number of old rows to refresh",
+)
 def main(
     filename: str,
     tmdb_type: TMDB_TYPE,
     tmdb_api_key: str,
     dry_run: bool,
     verbose: bool,
+    refresh_limit: int,
 ) -> None:
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
 
@@ -347,7 +359,7 @@ def main(
     df2 = (
         df.pipe(insert_tmdb_latest_changes, tmdb_type, tmdb_api_key)
         .pipe(_insert_tmdb_export_flag, tmdb_type)
-        .pipe(_insert_tmdb_external_ids, tmdb_type, tmdb_api_key)
+        .pipe(_insert_tmdb_external_ids, tmdb_type, tmdb_api_key, refresh_limit)
     )
     if df2.height < df.height:
         logger.warning(
