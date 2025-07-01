@@ -217,7 +217,7 @@ wheels = [
 [[package]]
 name = "tmdb-index"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "polars" },
