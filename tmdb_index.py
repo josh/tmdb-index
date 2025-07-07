@@ -420,7 +420,7 @@ def main(
     pl.Config.set_tbl_column_data_type_inline(True)
     pl.Config.set_tbl_formatting("ASCII_MARKDOWN")
     pl.Config.set_tbl_hide_dataframe_shape(True)
-    pl.Config.set_tbl_rows(-1)
+    pl.Config.set_tbl_rows(100)
     pl.Config.set_tbl_width_chars(500)
 
     df = pl.read_parquet(filename)
