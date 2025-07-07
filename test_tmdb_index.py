@@ -256,7 +256,7 @@ def test_tmdb_external_ids() -> None:
     not os.environ.get("TMDB_API_KEY"),
     reason="TMDB_API_KEY not set",
 )
-def test_process_backfill_from_epoch() -> None:
+def test_process() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df = process(
         df=None,
@@ -294,3 +294,20 @@ def test_process_backfill_from_epoch() -> None:
     assert row["date"] == date(2012, 10, 7)
     assert row["adult"] is False
     assert row["in_export"] is True
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_process_with_backfill() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    df = process(
+        df=None,
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=12,
+        refresh_limit=0,
+        changes_days_limit=3,
+    )
+    df2 = df.filter(pl.col("retrieved_at").is_not_null())
+    assert df2.height == 12
