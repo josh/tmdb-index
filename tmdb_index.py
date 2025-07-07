@@ -414,6 +414,11 @@ def main(
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
 
     pl.enable_string_cache()
+    pl.set_fmt_str_lengths(100)
+    pl.set_tbl_cols(-1)
+    pl.set_tbl_column_data_type_inline(True)
+    pl.set_tbl_rows(-1)
+    pl.set_tbl_width_chars(500)
 
     df = pl.read_parquet(filename)
     logger.debug("original df: %s", df)
@@ -431,6 +436,7 @@ def main(
         logger.warning(
             "df2 height %s is smaller than df height %s", df2.height, df.height
         )
+
     logger.info(df2)
     logger.info(change_summary(df, df2))
 
