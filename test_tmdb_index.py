@@ -56,7 +56,17 @@ def test_change_summary_reports_diffs() -> None:
         schema={"id": pl.UInt32, "value": pl.Int64},
     )
     summary = change_summary(df1, df2)
-    assert summary == "+1 -1 ~1"
+    # Check that summary starts with the expected counts
+    assert summary.startswith("+1 -1 ~1")
+    # Check that detailed information is included
+    assert "Added (1 rows):" in summary
+    assert "Removed (1 rows):" in summary
+    assert "Updated (1 rows):" in summary
+    # Check that the actual data is shown
+    assert "| 2        | 30          |" in summary  # Added row
+    assert "| 0        | 10          |" in summary  # Removed row
+    assert "| 1        | 20          |" in summary  # Updated row (before)
+    assert "| 1        | 200         |" in summary  # Updated row (after)
 
 
 def test_change_summary_identical_rows() -> None:
@@ -70,6 +80,29 @@ def test_change_summary_identical_rows() -> None:
     )
     summary = change_summary(df1, df2)
     assert summary == "+0 -0 ~0"
+
+
+def test_change_summary_shows_all_columns() -> None:
+    """Test that change_summary shows all columns in the output"""
+    df1 = pl.DataFrame(
+        {"id": [1], "name": ["Alice"], "age": [25], "city": ["NYC"]},
+        schema={"id": pl.UInt32, "name": pl.String, "age": pl.Int64, "city": pl.String},
+    )
+    df2 = pl.DataFrame(
+        {"id": [2], "name": ["Bob"], "age": [30], "city": ["LA"]},
+        schema={"id": pl.UInt32, "name": pl.String, "age": pl.Int64, "city": pl.String},
+    )
+    summary = change_summary(df1, df2)
+    # Check that all columns are present in the output
+    assert "id (u32)" in summary
+    assert "name (str)" in summary  
+    assert "age (i64)" in summary
+    assert "city (str)" in summary
+    # Check that the actual data is shown
+    assert "Alice" in summary
+    assert "Bob" in summary
+    assert "NYC" in summary
+    assert "LA" in summary
 
 
 def test_fetch_jsonl_gz_gzip_response() -> None:

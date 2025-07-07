@@ -56,12 +56,57 @@ def update_or_append(df: pl.DataFrame, other: pl.DataFrame) -> pl.DataFrame:
 
 
 def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> str:
-    added = df_new.join(df_old.select("id"), on="id", how="anti").height
-    removed = df_old.join(df_new.select("id"), on="id", how="anti").height
-    common = df_old.join(df_new.select("id"), on="id", how="semi").height
-    unchanged = df_old.join(df_new, on=df_old.columns, how="inner").height
-    updated = common - unchanged
-    return f"+{added} -{removed} ~{updated}"
+    added_df = df_new.join(df_old.select("id"), on="id", how="anti")
+    removed_df = df_old.join(df_new.select("id"), on="id", how="anti")
+    common = df_old.join(df_new.select("id"), on="id", how="semi")
+    unchanged = df_old.join(df_new, on=df_old.columns, how="inner")
+    
+    added_count = added_df.height
+    removed_count = removed_df.height
+    common_count = common.height
+    unchanged_count = unchanged.height
+    updated_count = common_count - unchanged_count
+    
+    # Basic summary line (for backward compatibility)
+    summary_line = f"+{added_count} -{removed_count} ~{updated_count}"
+    
+    # Create detailed output with markdown formatting
+    output_parts = [summary_line]
+    
+    # Configure polars for better output
+    with pl.Config() as cfg:
+        cfg.set_fmt_str_lengths(100)
+        cfg.set_tbl_cols(-1)
+        cfg.set_tbl_column_data_type_inline(True)
+        cfg.set_tbl_formatting("ASCII_MARKDOWN")
+        cfg.set_tbl_hide_dataframe_shape(True)
+        cfg.set_tbl_rows(-1)
+        cfg.set_tbl_width_chars(500)
+        
+        # Show added rows
+        if added_count > 0:
+            output_parts.append(f"\n\nAdded ({added_count} rows):")
+            output_parts.append(str(added_df))
+        
+        # Show removed rows  
+        if removed_count > 0:
+            output_parts.append(f"\n\nRemoved ({removed_count} rows):")
+            output_parts.append(str(removed_df))
+        
+        # Show updated rows
+        if updated_count > 0:
+            # Get IDs that were updated
+            updated_ids = common.join(unchanged, on="id", how="anti")
+            old_updated = df_old.join(updated_ids.select("id"), on="id", how="inner")
+            new_updated = df_new.join(updated_ids.select("id"), on="id", how="inner")
+            
+            output_parts.append(f"\n\nUpdated ({updated_count} rows):")
+            output_parts.append("Before:")
+            output_parts.append(str(old_updated))
+            output_parts.append("After:")
+            output_parts.append(str(new_updated))
+    
+    return "\n".join(output_parts)
 
 
 _TMDB_CHANGES_SCHEMA = pl.Schema(
