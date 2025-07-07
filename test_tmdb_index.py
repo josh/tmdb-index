@@ -236,6 +236,17 @@ def test_tmdb_changes_backfill_date_range_empty_df() -> None:
     assert dates[-1] == expected_end
 
 
+def test_tmdb_changes_backfill_date_range_missing_date_column() -> None:
+    df = pl.DataFrame({"missing_date": [1, 2, 3]}, schema={"missing_date": pl.Int32})
+    dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
+    expected_start = TMDB_CHANGES_EPOCH["movie"]
+    expected_end = date.today()
+    expected_days = (expected_end - expected_start).days + 1
+    assert len(dates) == expected_days
+    assert dates[0] == expected_start
+    assert dates[-1] == expected_end
+
+
 _FEW_MINUTES_AGO: datetime = datetime.now(UTC) - timedelta(minutes=5)
 
 

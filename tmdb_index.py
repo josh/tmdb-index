@@ -112,8 +112,14 @@ def tmdb_changes_backfill_date_range(
     df: pl.DataFrame,
     tmdb_type: TMDB_TYPE,
 ) -> list[date]:
-    start_date = TMDB_CHANGES_EPOCH[tmdb_type]
-    if not df.is_empty():
+    if df.is_empty() or "date" not in df.columns:
+        start_date = TMDB_CHANGES_EPOCH[tmdb_type]
+        logger.warning(
+            "tmdb_changes_backfill_date_range(df=%s, tmdb_type=%s): missing date column, using epoch",
+            start_date,
+            tmdb_type,
+        )
+    else:
         max_date = df["date"].max()
         assert max_date
         assert isinstance(max_date, date)
