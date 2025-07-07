@@ -72,7 +72,7 @@ _TMDB_CHANGES_SCHEMA = pl.Schema(
     ]
 )
 
-_TMDB_CHANGES_EPOCH: dict[TMDB_TYPE, date] = {
+TMDB_CHANGES_EPOCH: dict[TMDB_TYPE, date] = {
     "movie": date(2012, 10, 5),
     "tv": date(2012, 12, 31),
     "person": date(2012, 10, 5),
@@ -84,8 +84,8 @@ def tmdb_changes(
     date: date,
     tmdb_api_key: str,
 ) -> pl.DataFrame:
-    assert date >= _TMDB_CHANGES_EPOCH[tmdb_type], (
-        f"Date must be after {_TMDB_CHANGES_EPOCH[tmdb_type]}"
+    assert date >= TMDB_CHANGES_EPOCH[tmdb_type], (
+        f"Date must be after {TMDB_CHANGES_EPOCH[tmdb_type]}"
     )
 
     start_date = date.strftime("%Y-%m-%d")
@@ -111,7 +111,7 @@ def tmdb_changes_backfill_date_range(
     df: pl.DataFrame,
     tmdb_type: TMDB_TYPE,
 ) -> list[date]:
-    start_date = _TMDB_CHANGES_EPOCH[tmdb_type]
+    start_date = TMDB_CHANGES_EPOCH[tmdb_type]
     if not df.is_empty():
         max_date = df["date"].max()
         assert max_date
@@ -327,13 +327,28 @@ def _insert_tmdb_external_ids(
 
 
 def process(
-    df: pl.DataFrame,
+    df: pl.DataFrame | None,
     tmdb_type: TMDB_TYPE,
     tmdb_api_key: str,
     backfill_limit: int,
     refresh_limit: int,
     changes_days_limit: int,
 ) -> pl.DataFrame:
+    if df is None:
+        # FIXME: Shouldn't have to set explicit schema
+        df = pl.DataFrame(
+            schema={
+                "id": pl.UInt32,
+                "date": pl.Date,
+                "adult": pl.Boolean,
+                "in_export": pl.Boolean,
+                "success": pl.Boolean,
+                "retrieved_at": pl.Datetime(time_unit="ns"),
+                "imdb_numeric_id": pl.UInt32,
+                "tvdb_id": pl.UInt32,
+                "wikidata_numeric_id": pl.UInt32,
+            }
+        )
     df = insert_tmdb_latest_changes(
         df,
         tmdb_type=tmdb_type,

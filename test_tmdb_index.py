@@ -5,12 +5,14 @@ import polars as pl
 import pytest
 
 from tmdb_index import (
+    TMDB_CHANGES_EPOCH,
     align_id_col,
     change_summary,
     export_available,
     export_date,
     fetch_jsonl_gz,
     insert_tmdb_latest_changes,
+    process,
     tmdb_changes,
     tmdb_changes_backfill_date_range,
     tmdb_export,
@@ -248,3 +250,47 @@ def test_tmdb_external_ids() -> None:
     assert result["imdb_numeric_id"] == 133093
     assert result["tvdb_id"] is None
     assert result["wikidata_numeric_id"] == 83495
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_process_backfill_from_epoch() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    df = process(
+        df=None,
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=0,
+        refresh_limit=0,
+        changes_days_limit=3,
+    )
+
+    assert df.columns == [
+        "id",
+        "date",
+        "adult",
+        "in_export",
+        "success",
+        "retrieved_at",
+        "imdb_numeric_id",
+        "tvdb_id",
+        "wikidata_numeric_id",
+    ]
+    assert df.height > 0
+
+    start_date = TMDB_CHANGES_EPOCH["movie"]
+    df_dates: list[date] = df["date"].unique().sort().to_list()
+    assert df_dates == [
+        None,
+        start_date,
+        start_date + timedelta(days=1),
+        start_date + timedelta(days=2),
+    ]
+
+    row = df.row(index=522, named=True)
+    assert row["id"] == 522
+    assert row["date"] == date(2012, 10, 7)
+    assert row["adult"] is False
+    assert row["in_export"] is True
