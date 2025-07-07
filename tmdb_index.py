@@ -142,9 +142,9 @@ def insert_tmdb_latest_changes(
             date=d,
             tmdb_api_key=tmdb_api_key,
         )
-        df = df.pipe(update_or_append, changes)
+        df = update_or_append(df, changes)
 
-    return df.pipe(align_id_col)
+    return align_id_col(df)
 
 
 def fetch_jsonl_gz(url: str) -> Generator[Any, None, None]:
@@ -330,7 +330,9 @@ def _insert_tmdb_external_ids(
     df_changes = pl.from_dicts(data, schema=_EXTERNAL_IDS_RESPONSE_SCHEMA)
     logger.debug("external id changes: %s", df_changes)
 
-    return df.pipe(update_or_append, df_changes).pipe(align_id_col)
+    df = update_or_append(df, df_changes)
+    df = align_id_col(df)
+    return df
 
 
 def process(
