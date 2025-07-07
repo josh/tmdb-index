@@ -18,6 +18,7 @@ from tmdb_index import (
     tmdb_export,
     tmdb_external_ids,
     update_or_append,
+    update_tmdb_export_flag,
 )
 
 
@@ -329,3 +330,39 @@ def test_process_with_backfill() -> None:
     )
     df2 = df.filter(pl.col("retrieved_at").is_not_null())
     assert df2.height == 12
+
+
+def test_update_tmdb_export_flag_append() -> None:
+    df = pl.DataFrame(
+        {"id": [1, 2, 9999999], "value": [10, 20, 30]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
+    )
+    assert df.columns == ["id", "value"]
+    df2 = update_tmdb_export_flag(df, tmdb_type="movie")
+    assert df2.columns == ["id", "value", "in_export"]
+    assert df2.shape == (3, 3)
+    assert df2.row(index=2) == (9999999, 30, False)
+
+
+def test_update_tmdb_export_flag_replace() -> None:
+    df = pl.DataFrame(
+        {
+            "id": [1, 2, 9999999],
+            "in_export": [True, True, True],
+            "value": [10, 20, 30],
+        },
+        schema={"id": pl.UInt32, "in_export": pl.Boolean, "value": pl.Int64},
+    )
+    assert df.columns == ["id", "in_export", "value"]
+    df2 = update_tmdb_export_flag(df, tmdb_type="movie")
+    assert df2.columns == ["id", "in_export", "value"]
+    assert df2.shape == (3, 3)
+    assert df2.row(index=2) == (9999999, False, 30)
+
+
+def test_update_tmdb_export_flag_empty() -> None:
+    df = pl.DataFrame(schema={"id": pl.UInt32, "value": pl.Int64})
+    assert df.columns == ["id", "value"]
+    df2 = update_tmdb_export_flag(df, tmdb_type="movie")
+    assert df2.columns == ["id", "value", "in_export"]
+    assert df2.shape == (0, 3)

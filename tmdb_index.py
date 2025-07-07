@@ -230,13 +230,18 @@ def tmdb_export(tmdb_type: TMDB_TYPE) -> pl.DataFrame:
         return _tmdb_raw_export("person")
 
 
-def _insert_tmdb_export_flag(df: pl.DataFrame, tmdb_type: TMDB_TYPE) -> pl.DataFrame:
-    return (
-        df.drop("in_export")
-        .join(tmdb_export(tmdb_type), on="id", how="left", coalesce=True)
-        .with_columns(pl.col("in_export").fill_null(False))
-        .select(df.columns)
+def update_tmdb_export_flag(df: pl.DataFrame, tmdb_type: TMDB_TYPE) -> pl.DataFrame:
+    col_names = df.columns
+    if "in_export" not in df.columns:
+        col_names.append("in_export")
+
+    in_export_col = (
+        df.select("id")
+        .join(tmdb_export(tmdb_type), on="id", how="left", coalesce=True)["in_export"]
+        .fill_null(False)
     )
+
+    return df.with_columns(in_export=in_export_col).select(col_names)
 
 
 def tmdb_external_ids(
@@ -364,7 +369,7 @@ def process(
         tmdb_api_key=tmdb_api_key,
         days_limit=changes_days_limit,
     )
-    df = _insert_tmdb_export_flag(df, tmdb_type=tmdb_type)
+    df = update_tmdb_export_flag(df, tmdb_type=tmdb_type)
     df = _insert_tmdb_external_ids(
         df,
         tmdb_type=tmdb_type,
