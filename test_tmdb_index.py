@@ -35,6 +35,7 @@ def test_align_id_col_empty_df_returns_empty() -> None:
     result = align_id_col(df)
     assert result.is_empty()
 
+
 def test_align_id_col_missing_column() -> None:
     df = pl.DataFrame({"id2": [1, 2, 3]}, schema={"id2": pl.UInt32})
     with pytest.raises(pl.exceptions.ColumnNotFoundError):
@@ -299,6 +300,7 @@ def test_process() -> None:
     assert row["date"] == date(2012, 10, 7)
     assert row["adult"] is False
     assert row["in_export"] is True
+
 
 @pytest.mark.skipif(
     not os.environ.get("TMDB_API_KEY"),
