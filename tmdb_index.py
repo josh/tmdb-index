@@ -4,7 +4,7 @@ import logging
 import re
 import urllib.error
 import urllib.request
-from collections.abc import Iterable, Iterator
+from collections.abc import Generator, Iterable, Iterator
 from datetime import UTC, date, datetime, timedelta
 from itertools import islice
 from typing import Any, Literal
@@ -140,7 +140,7 @@ def insert_tmdb_latest_changes(
     return df.pipe(align_id_col)
 
 
-def fetch_jsonl_gz(url: str) -> Iterator[Any]:
+def fetch_jsonl_gz(url: str) -> Generator[Any, None, None]:
     req = urllib.request.Request(url)
     with urllib.request.urlopen(req, timeout=10) as response:
         logger.debug(
