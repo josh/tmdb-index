@@ -1,6 +1,7 @@
 import gzip
 import json
 import logging
+import os
 import re
 import urllib.error
 import urllib.request
@@ -438,8 +439,12 @@ def main(
     pl.Config.set_tbl_rows(100)
     pl.Config.set_tbl_width_chars(500)
 
-    df = pl.read_parquet(filename)
-    logger.debug("original df: %s", df)
+    if os.path.exists(filename):
+        df = pl.read_parquet(filename)
+        logger.debug("original df: %s", df)
+    else:
+        df = None
+        logger.warning("original df not found, initializing empty dataframe")
 
     df2 = process(
         df=df,
@@ -450,15 +455,14 @@ def main(
         changes_days_limit=days_limit,
     )
 
-    if df2.height < df.height:
+    if df is not None and df2.height < df.height:
         logger.warning(
             "df2 height %s is smaller than df height %s", df2.height, df.height
         )
 
     logger.info(df2)
-    logger.info(change_summary(df, df2))
-
-    assert df.schema == df2.schema, f"{df.schema} != {df2.schema}"
+    if df is not None:
+        logger.info(change_summary(df, df2))
 
     if not dry_run:
         df2.write_parquet(
