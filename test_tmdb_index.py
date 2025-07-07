@@ -35,6 +35,11 @@ def test_align_id_col_empty_df_returns_empty() -> None:
     result = align_id_col(df)
     assert result.is_empty()
 
+def test_align_id_col_missing_column() -> None:
+    df = pl.DataFrame({"id2": [1, 2, 3]}, schema={"id2": pl.UInt32})
+    with pytest.raises(pl.exceptions.ColumnNotFoundError):
+        align_id_col(df)
+
 
 def test_update_or_append_merges_and_updates() -> None:
     df1 = pl.DataFrame(
