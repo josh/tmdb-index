@@ -2,6 +2,7 @@ import gzip
 import json
 import logging
 import re
+import urllib.error
 import urllib.request
 from collections.abc import Iterable, Iterator
 from datetime import UTC, date, datetime, timedelta
