@@ -45,14 +45,35 @@ def test_align_id_col_missing_column() -> None:
 
 def test_update_or_append_merges_and_updates() -> None:
     df1 = pl.DataFrame(
-        {"id": [0, 1], "value": [10, 20]}, schema={"id": pl.UInt32, "value": pl.Int64}
+        {"id": [0, 1], "value": [10, 20]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
     )
     df2 = pl.DataFrame(
-        {"id": [1, 2], "value": [200, 30]}, schema={"id": pl.UInt32, "value": pl.Int64}
+        {"id": [1, 2], "value": [200, 30]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
     )
     result = update_or_append(df1, df2)
+    assert result.columns == ["id", "value"]
     assert result.sort("id")["value"].to_list() == [10, 200, 30]
     assert result.sort("id")["id"].to_list() == [0, 1, 2]
+
+
+def test_update_or_append_mismatched_columns() -> None:
+    df1 = pl.DataFrame(
+        {"id": [1, 2], "a": [10, 20], "b": [100, 200]},
+        schema={"id": pl.UInt32, "a": pl.Int64, "b": pl.Int64},
+    )
+    df2 = pl.DataFrame(
+        {"id": [2, 3], "b": [222, 333], "c": [42, 43]},
+        schema={"id": pl.UInt32, "b": pl.Int64, "c": pl.Int64},
+    )
+    result = update_or_append(df1, df2)
+    assert result.columns == ["id", "a", "b", "c"]
+    result = result.sort("id")
+    assert result["id"].to_list() == [1, 2, 3]
+    assert result.row(0) == (1, 10, 100, None)
+    assert result.row(1) == (2, 20, 222, 42)
+    assert result.row(2) == (3, None, 333, 43)
 
 
 def test_change_summary_reports_diffs() -> None:

@@ -49,11 +49,33 @@ def align_id_col(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def update_or_append(df: pl.DataFrame, other: pl.DataFrame) -> pl.DataFrame:
-    other_cols = list(other.columns)
-    other_cols.remove("id")
-    other = other.join(df.drop(other_cols), on="id", how="left", coalesce=True).select(
-        df.columns
+    assert "id" in df.columns
+    assert "id" in other.columns
+
+    output_schema = pl.Schema()
+    for name in df.schema.names():
+        output_schema[name] = df.schema[name]
+    for name in other.schema.names():
+        if name in output_schema:
+            assert other.schema[name] == output_schema[name]
+            continue
+        output_schema[name] = other.schema[name]
+    logger.debug(
+        "update_or_append(df=%s, other=%s): output schema=%s",
+        df.schema,
+        other.schema,
+        output_schema,
     )
+
+    df = df.match_to_schema(output_schema, missing_columns="insert")
+
+    other = other.join(
+        df.drop(set(other.columns) - {"id"}),
+        on="id",
+        how="left",
+        coalesce=True,
+    ).select(output_schema.names())
+
     return pl.concat([df, other]).unique(subset="id", keep="last", maintain_order=True)
 
 
