@@ -337,17 +337,38 @@ def insert_tmdb_external_ids(
     backfill_limit: int = 10000,
     refresh_limit: int = 1000,
 ) -> pl.DataFrame:
-    df_to_update = df.filter(
+    filter_predicates: list[pl.Expr] = []
+
+    if "date" in df.columns and "retrieved_at" in df.columns:
         # If the tmdb change date is newer than our last retrieved at date
-        (pl.col("date") >= pl.col("retrieved_at").dt.round("1d"))
+        filter_predicates.append(
+            pl.col("date") >= pl.col("retrieved_at").dt.round("1d")
+        )
+
+    if "retrieved_at" in df.columns:
         # Backfill any items we never retrieved
-        | (
+        filter_predicates.append(
+            # Initially filter down to not retrieved items
             pl.col("retrieved_at").is_null()
+            # Then limit to the `backfill_limit`
             & (pl.col("retrieved_at").is_not_null().rank("ordinal") <= backfill_limit)
         )
+
         # Refresh some of the oldest items
-        | (pl.col("retrieved_at").rank("ordinal") <= refresh_limit)
-    ).select("id")
+        filter_predicates.append(
+            pl.col("retrieved_at").rank("ordinal") <= refresh_limit
+        )
+
+    else:
+        # Backfill the first, `backfill_limit` items,
+        filter_predicates.append(pl.col("id").rank("ordinal") <= backfill_limit)
+        logger.warning(
+            "No retrieved_at column, backfilling first %s items", backfill_limit
+        )
+
+    assert len(filter_predicates) >= 1
+    filter_predicate = pl.Expr.or_(*filter_predicates)
+    df_to_update = df.filter(filter_predicate).select("id")
 
     data = _tmdb_external_ids_iter(
         tmdb_type=tmdb_type,
@@ -356,6 +377,10 @@ def insert_tmdb_external_ids(
     )
     df_changes = pl.from_dicts(data, schema=_EXTERNAL_IDS_RESPONSE_SCHEMA)
     logger.debug("external id changes: %s", df_changes)
+
+    if df_changes.is_empty():
+        logger.warning("No external id changes: %s", df_changes)
+        return df
 
     df = update_or_append(df, df_changes)
     df = align_id_col(df)
