@@ -280,11 +280,10 @@ _FEW_MINUTES_AGO: datetime = datetime.now(UTC) - timedelta(minutes=5)
 def test_insert_tmdb_external_ids() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df = pl.DataFrame(
-        [{"id": 603, "date": date.today(), "retrieved_at": None}],
+        [{"id": 603, "date": date.today()}],
         schema={
             "id": pl.UInt32,
             "date": pl.Date,
-            "retrieved_at": pl.Datetime(time_unit="ns"),
         },
     )
     result = insert_tmdb_external_ids(
@@ -342,11 +341,6 @@ def test_process() -> None:
         "date",
         "adult",
         "in_export",
-        "success",
-        "retrieved_at",
-        "imdb_numeric_id",
-        "tvdb_id",
-        "wikidata_numeric_id",
     ]
     assert df.height > 0
 

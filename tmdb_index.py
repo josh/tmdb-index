@@ -401,13 +401,6 @@ def process(
             schema={
                 "id": pl.UInt32,
                 "date": pl.Date,
-                "adult": pl.Boolean,
-                "in_export": pl.Boolean,
-                "success": pl.Boolean,
-                "retrieved_at": pl.Datetime(time_unit="ns"),
-                "imdb_numeric_id": pl.UInt32,
-                "tvdb_id": pl.UInt32,
-                "wikidata_numeric_id": pl.UInt32,
             }
         )
     df = insert_tmdb_latest_changes(
