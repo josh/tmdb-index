@@ -349,6 +349,17 @@ def test_process_with_backfill() -> None:
         refresh_limit=0,
         changes_days_limit=3,
     )
+    assert df.columns == [
+        "id",
+        "date",
+        "adult",
+        "in_export",
+        "success",
+        "retrieved_at",
+        "imdb_numeric_id",
+        "tvdb_id",
+        "wikidata_numeric_id",
+    ]
     df2 = df.filter(pl.col("retrieved_at").is_not_null())
     assert df2.height == 12
 
