@@ -11,6 +11,7 @@ from tmdb_index import (
     export_available,
     export_date,
     fetch_jsonl_gz,
+    insert_tmdb_external_ids,
     insert_tmdb_latest_changes,
     process,
     tmdb_changes,
@@ -270,6 +271,36 @@ def test_tmdb_changes_backfill_date_range_missing_date_column() -> None:
 
 
 _FEW_MINUTES_AGO: datetime = datetime.now(UTC) - timedelta(minutes=5)
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_insert_tmdb_external_ids() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    df = pl.DataFrame(
+        [{"id": 603, "date": date.today(), "retrieved_at": None}],
+        schema={
+            "id": pl.UInt32,
+            "date": pl.Date,
+            "retrieved_at": pl.Datetime(time_unit="ns"),
+        },
+    )
+    result = insert_tmdb_external_ids(
+        df,
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=1,
+        refresh_limit=0,
+    )
+    row = result.filter(pl.col("id") == 603).row(0, named=True)
+    assert row["id"] == 603
+    assert row["success"] is True
+    assert row["retrieved_at"] is not None
+    assert row["imdb_numeric_id"] == 133093
+    assert row["tvdb_id"] is None
+    assert row["wikidata_numeric_id"] == 83495
 
 
 @pytest.mark.skipif(

@@ -330,7 +330,7 @@ def _tmdb_external_ids_iter(
         )
 
 
-def _insert_tmdb_external_ids(
+def insert_tmdb_external_ids(
     df: pl.DataFrame,
     tmdb_type: TMDB_TYPE,
     tmdb_api_key: str,
@@ -392,7 +392,7 @@ def process(
         days_limit=changes_days_limit,
     )
     df = update_tmdb_export_flag(df, tmdb_type=tmdb_type)
-    df = _insert_tmdb_external_ids(
+    df = insert_tmdb_external_ids(
         df,
         tmdb_type=tmdb_type,
         tmdb_api_key=tmdb_api_key,
