@@ -513,7 +513,7 @@ def main(
         )
         exit(1)
 
-    logger.info(df2)
+    logger.debug(df2)
     logger.info(change_summary(df, df2))
 
     if not dry_run:
