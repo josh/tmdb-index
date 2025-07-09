@@ -503,9 +503,12 @@ def main(
     )
 
     if df2.height < df.height:
-        logger.warning(
-            "df2 height %s is smaller than df height %s", df2.height, df.height
+        logger.error(
+            "df2 height %s is smaller than df height %s",
+            df2.height,
+            df.height,
         )
+        exit(1)
 
     logger.info(df2)
     logger.info(change_summary(df, df2))
