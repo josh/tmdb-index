@@ -417,7 +417,7 @@ def process(
 @click.command()
 @click.argument(
     "filename",
-    type=click.Path(exists=True),
+    type=click.Path(),
     required=True,
 )
 @click.option(
@@ -490,7 +490,7 @@ def main(
         df = pl.read_parquet(filename)
         logger.debug("original df: %s", df)
     else:
-        df = pl.DataFrame()
+        df = pl.DataFrame(schema={"id": pl.UInt32})
         logger.warning("original df not found, initializing empty dataframe")
 
     df2 = process(
@@ -502,14 +502,13 @@ def main(
         changes_days_limit=days_limit,
     )
 
-    if df is not None and df2.height < df.height:
+    if df2.height < df.height:
         logger.warning(
             "df2 height %s is smaller than df height %s", df2.height, df.height
         )
 
     logger.info(df2)
-    if df is not None:
-        logger.info(change_summary(df, df2))
+    logger.info(change_summary(df, df2))
 
     if not dry_run:
         df2.write_parquet(
