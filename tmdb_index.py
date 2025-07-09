@@ -185,13 +185,9 @@ def fetch_jsonl_gz(url: str) -> Generator[Any, None, None]:
                 yield json.loads(line)
 
 
-def export_date(now: datetime | None = None) -> date:
-    if now is None:
-        now = datetime.now(UTC)
-
+def export_date(now: datetime = datetime.now(UTC)) -> date:
     if 0 <= now.hour < 8:
         return (now - timedelta(days=1)).date()
-
     return now.date()
 
 
