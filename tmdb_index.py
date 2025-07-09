@@ -49,9 +49,6 @@ def align_id_col(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def update_or_append(df: pl.DataFrame, other: pl.DataFrame) -> pl.DataFrame:
-    assert "id" in df.columns
-    assert "id" in other.columns
-
     output_schema = pl.Schema()
     for name in df.schema.names():
         output_schema[name] = df.schema[name]
@@ -66,6 +63,11 @@ def update_or_append(df: pl.DataFrame, other: pl.DataFrame) -> pl.DataFrame:
         other.schema,
         output_schema,
     )
+
+    assert "id" in output_schema.names(), "output schema must have id column"
+
+    if df.is_empty():
+        return other.match_to_schema(output_schema, missing_columns="insert")
 
     df = df.match_to_schema(output_schema, missing_columns="insert")
 
@@ -388,16 +390,13 @@ def insert_tmdb_external_ids(
 
 
 def process(
-    df: pl.DataFrame | None,
+    df: pl.DataFrame,
     tmdb_type: TMDB_TYPE,
     tmdb_api_key: str,
     backfill_limit: int,
     refresh_limit: int,
     changes_days_limit: int,
 ) -> pl.DataFrame:
-    if df is None:
-        # FIXME: Shouldn't have to set explicit schema
-        df = pl.DataFrame(schema={"id": pl.UInt32})
     df = insert_tmdb_latest_changes(
         df,
         tmdb_type=tmdb_type,
@@ -491,7 +490,7 @@ def main(
         df = pl.read_parquet(filename)
         logger.debug("original df: %s", df)
     else:
-        df = None
+        df = pl.DataFrame()
         logger.warning("original df not found, initializing empty dataframe")
 
     df2 = process(

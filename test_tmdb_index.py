@@ -77,6 +77,18 @@ def test_update_or_append_mismatched_columns() -> None:
     assert result.row(2) == (3, None, 333, 43)
 
 
+def test_update_or_append_empty_df() -> None:
+    empty_df = pl.DataFrame()
+    df2 = pl.DataFrame(
+        {"id": [1, 2], "value": [10, 20]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
+    )
+    result = update_or_append(empty_df, df2)
+    assert result.columns == ["id", "value"]
+    assert result["id"].to_list() == [1, 2]
+    assert result["value"].to_list() == [10, 20]
+
+
 def test_change_summary_reports_diffs() -> None:
     df1 = pl.DataFrame(
         {"id": [0, 1], "value": [10, 20]},
@@ -208,6 +220,28 @@ def test_insert_tmdb_latest_changes() -> None:
     assert len(df2) > len(df)
 
 
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_insert_tmdb_latest_changes_empty_df() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+
+    empty_df = pl.DataFrame()
+    df = insert_tmdb_latest_changes(
+        empty_df,
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+        days_limit=3,
+    )
+
+    assert df.columns == ["id", "date", "adult"]
+    row = df.row(522, named=True)
+    assert row["id"] == 522
+    assert row["date"] == date(2012, 10, 7)
+    assert row["adult"] is False
+
+
 def test_tmdb_changes_backfill_date_range() -> None:
     d = date.today()
     df = pl.DataFrame({"date": [d]})
@@ -328,7 +362,7 @@ def test_tmdb_external_ids() -> None:
 def test_process() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df = process(
-        df=None,
+        df=pl.DataFrame(),
         tmdb_type="movie",
         tmdb_api_key=tmdb_api_key,
         backfill_limit=0,
@@ -367,7 +401,7 @@ def test_process() -> None:
 def test_process_with_backfill() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df = process(
-        df=None,
+        df=pl.DataFrame(),
         tmdb_type="movie",
         tmdb_api_key=tmdb_api_key,
         backfill_limit=12,
