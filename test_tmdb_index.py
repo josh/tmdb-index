@@ -398,7 +398,85 @@ def test_process() -> None:
     not os.environ.get("TMDB_API_KEY"),
     reason="TMDB_API_KEY not set",
 )
-def test_process_with_backfill() -> None:
+def test_process_with_backfill_initial() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    df1 = process(
+        df=pl.DataFrame(),
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=0,
+        refresh_limit=0,
+        changes_days_limit=3,
+    )
+    assert "retrieved_at" not in df1.columns
+
+    df2 = process(
+        df=df1,
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=12,
+        refresh_limit=0,
+        changes_days_limit=1,
+    )
+    assert df2.columns == [
+        "id",
+        "date",
+        "adult",
+        "in_export",
+        "success",
+        "retrieved_at",
+        "imdb_numeric_id",
+        "tvdb_id",
+        "wikidata_numeric_id",
+    ]
+    df3 = df2.filter(pl.col("retrieved_at").is_not_null())
+    assert df3.height == 12
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_process_with_backfill_existing() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    df1 = process(
+        df=pl.DataFrame(),
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=3,
+        refresh_limit=0,
+        changes_days_limit=3,
+    )
+    assert "retrieved_at" in df1.columns
+
+    df2 = process(
+        df=df1,
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=12,
+        refresh_limit=0,
+        changes_days_limit=1,
+    )
+    assert df2.columns == [
+        "id",
+        "date",
+        "adult",
+        "in_export",
+        "success",
+        "retrieved_at",
+        "imdb_numeric_id",
+        "tvdb_id",
+        "wikidata_numeric_id",
+    ]
+    df3 = df2.filter(pl.col("retrieved_at").is_not_null())
+    assert df3.height == 15
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_process_with_backfill_empty() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df = process(
         df=pl.DataFrame(),
@@ -421,6 +499,45 @@ def test_process_with_backfill() -> None:
     ]
     df2 = df.filter(pl.col("retrieved_at").is_not_null())
     assert df2.height == 12
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_process_with_refresh() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    df1 = process(
+        df=pl.DataFrame(),
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=3,
+        refresh_limit=0,
+        changes_days_limit=3,
+    )
+    assert "retrieved_at" in df1.columns
+
+    df2 = process(
+        df=df1,
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=0,
+        refresh_limit=12,
+        changes_days_limit=1,
+    )
+    assert df2.columns == [
+        "id",
+        "date",
+        "adult",
+        "in_export",
+        "success",
+        "retrieved_at",
+        "imdb_numeric_id",
+        "tvdb_id",
+        "wikidata_numeric_id",
+    ]
+    df3 = df2.filter(pl.col("retrieved_at").is_not_null())
+    assert df3.height == 3
 
 
 def test_update_tmdb_export_flag_append() -> None:
