@@ -343,28 +343,35 @@ def insert_tmdb_external_ids(
             pl.col("date") >= pl.col("retrieved_at").dt.round("1d")
         )
 
-    if "retrieved_at" in df.columns:
-        # Backfill any items we never retrieved
-        filter_predicates.append(
-            # Initially filter down to not retrieved items
-            pl.col("retrieved_at").is_null()
-            # Then limit to the `backfill_limit`
-            & (pl.col("retrieved_at").is_not_null().rank("ordinal") <= backfill_limit)
-        )
+    if backfill_limit > 0:
+        if "retrieved_at" in df.columns:
+            # Backfill any items we never retrieved
+            filter_predicates.append(
+                # Initially filter down to not retrieved items
+                pl.col("retrieved_at").is_null()
+                # Then limit to the `backfill_limit`
+                & (
+                    pl.col("retrieved_at").is_not_null().rank("ordinal")
+                    <= backfill_limit
+                )
+            )
+        else:
+            # Backfill the first, `backfill_limit` items,
+            filter_predicates.append(pl.col("id").rank("ordinal") <= backfill_limit)
+            logger.warning(
+                "No retrieved_at column, backfilling first %s items", backfill_limit
+            )
 
+    if refresh_limit > 0 and "retrieved_at" in df.columns:
         # Refresh some of the oldest items
         filter_predicates.append(
             pl.col("retrieved_at").rank("ordinal") <= refresh_limit
         )
 
-    else:
-        # Backfill the first, `backfill_limit` items,
-        filter_predicates.append(pl.col("id").rank("ordinal") <= backfill_limit)
-        logger.warning(
-            "No retrieved_at column, backfilling first %s items", backfill_limit
-        )
+    if len(filter_predicates) == 0:
+        logger.warning("No external ids to update: %s", df)
+        return df
 
-    assert len(filter_predicates) >= 1
     filter_predicate = pl.Expr.or_(*filter_predicates)
     df_to_update = df.filter(filter_predicate).select("id")
 
