@@ -397,12 +397,7 @@ def process(
 ) -> pl.DataFrame:
     if df is None:
         # FIXME: Shouldn't have to set explicit schema
-        df = pl.DataFrame(
-            schema={
-                "id": pl.UInt32,
-                "date": pl.Date,
-            }
-        )
+        df = pl.DataFrame(schema={"id": pl.UInt32})
     df = insert_tmdb_latest_changes(
         df,
         tmdb_type=tmdb_type,
