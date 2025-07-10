@@ -8,6 +8,7 @@ from tmdb_index import (
     TMDB_CHANGES_EPOCH,
     align_id_col,
     change_summary,
+    compute_stats,
     export_available,
     export_date,
     fetch_jsonl_gz,
@@ -574,3 +575,80 @@ def test_update_tmdb_export_flag_empty() -> None:
     df2 = update_tmdb_export_flag(df, tmdb_type="movie")
     assert df2.columns == ["id", "value", "in_export"]
     assert df2.shape == (0, 3)
+
+
+def test_compute_stats() -> None:
+    df = pl.DataFrame(
+        [
+            {
+                "id": 1,
+                "date": date(2024, 1, 1),
+                "adult": False,
+                "in_export": True,
+                "success": True,
+                "retrieved_at": datetime(2024, 1, 1, tzinfo=UTC),
+                "imdb_numeric_id": 111,
+                "tvdb_id": None,
+                "wikidata_numeric_id": 1001,
+            },
+            {
+                "id": 2,
+                "date": None,
+                "adult": None,
+                "in_export": False,
+                "success": True,
+                "retrieved_at": None,
+                "imdb_numeric_id": None,
+                "tvdb_id": None,
+                "wikidata_numeric_id": None,
+            },
+            {
+                "id": 3,
+                "date": date(2024, 1, 3),
+                "adult": True,
+                "in_export": True,
+                "success": False,
+                "retrieved_at": datetime(2024, 1, 3, tzinfo=UTC),
+                "imdb_numeric_id": 111,
+                "tvdb_id": None,
+                "wikidata_numeric_id": 1003,
+            },
+            {
+                "id": 4,
+                "date": None,
+                "adult": False,
+                "in_export": True,
+                "success": True,
+                "retrieved_at": datetime(2024, 1, 4, tzinfo=UTC),
+                "imdb_numeric_id": None,
+                "tvdb_id": None,
+                "wikidata_numeric_id": 1004,
+            },
+        ],
+        schema={
+            "id": pl.UInt32,
+            "date": pl.Date,
+            "adult": pl.Boolean,
+            "in_export": pl.Boolean,
+            "success": pl.Boolean,
+            "retrieved_at": pl.Datetime("ns"),
+            "imdb_numeric_id": pl.UInt32,
+            "tvdb_id": pl.UInt32,
+            "wikidata_numeric_id": pl.UInt32,
+        },
+    )
+    result = compute_stats(df)
+    assert result.columns == ["name", "dtype", "null", "true", "false", "unique"]
+    row = result.filter(pl.col("name") == "adult").row(0, named=True)
+    assert row["true"] == "1 (25.0%)"
+    assert row["false"] == "2 (50.0%)"
+    row = result.filter(pl.col("name") == "date").row(0, named=True)
+    assert row["null"] == "2 (50.0%)"
+
+
+def test_compute_stats_empty() -> None:
+    df = pl.DataFrame(schema={"id": pl.UInt32, "adult": pl.Boolean})
+    result = compute_stats(df)
+    row = result.filter(pl.col("name") == "id").row(0, named=True)
+    assert row["unique"] == "true"
+    assert row["null"] == ""

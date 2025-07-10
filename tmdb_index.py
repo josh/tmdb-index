@@ -90,6 +90,35 @@ def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> str:
     return f"+{added} -{removed} ~{updated}"
 
 
+def compute_stats(df: pl.DataFrame) -> pl.DataFrame:
+    row_count = df.height
+
+    def fmt(n: int) -> str:
+        if n == 0 or row_count == 0:
+            return ""
+        return f"{n:,} ({n / row_count:.1%})"
+
+    rows = []
+    for name, dtype in df.schema.items():
+        s = df[name]
+        nulls = s.null_count()
+        trues = int(s.sum()) if dtype == pl.Boolean else 0
+        falses = int((~s).sum()) if dtype == pl.Boolean else 0
+        unique = s.drop_nulls().n_unique() == s.drop_nulls().len()
+        rows.append(
+            {
+                "name": name,
+                "dtype": str(dtype),
+                "null": fmt(nulls),
+                "true": fmt(trues) if dtype == pl.Boolean else "",
+                "false": fmt(falses) if dtype == pl.Boolean else "",
+                "unique": "true" if unique else "",
+            }
+        )
+
+    return pl.DataFrame(rows)
+
+
 _TMDB_CHANGES_SCHEMA = pl.Schema(
     [
         ("id", pl.UInt32),
