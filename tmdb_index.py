@@ -24,16 +24,39 @@ _IMDB_ID_PATTERN: dict[TMDB_TYPE, str] = {
     "person": r"nm(\d+)",
 }
 
-_EXTERNAL_IDS_RESPONSE_SCHEMA = pl.Schema(
-    [
-        ("success", pl.Boolean),
-        ("id", pl.UInt32),
-        ("retrieved_at", pl.Datetime(time_unit="ns")),
-        ("imdb_numeric_id", pl.UInt32),
-        ("tvdb_id", pl.UInt32),
-        ("wikidata_numeric_id", pl.UInt32),
-    ]
-)
+_EXTERNAL_IDS_RESPONSE_SCHEMA: dict[TMDB_TYPE, pl.Schema] = {
+    "movie": pl.Schema(
+        [
+            ("success", pl.Boolean),
+            ("id", pl.UInt32),
+            ("retrieved_at", pl.Datetime(time_unit="ns")),
+            ("imdb_numeric_id", pl.UInt32),
+            # movies never have tvdb ids
+            # ("tvdb_id", pl.UInt32),
+            ("wikidata_numeric_id", pl.UInt32),
+        ]
+    ),
+    "tv": pl.Schema(
+        [
+            ("success", pl.Boolean),
+            ("id", pl.UInt32),
+            ("retrieved_at", pl.Datetime(time_unit="ns")),
+            ("imdb_numeric_id", pl.UInt32),
+            ("tvdb_id", pl.UInt32),
+            ("wikidata_numeric_id", pl.UInt32),
+        ]
+    ),
+    "person": pl.Schema(
+        [
+            ("success", pl.Boolean),
+            ("id", pl.UInt32),
+            ("retrieved_at", pl.Datetime(time_unit="ns")),
+            ("imdb_numeric_id", pl.UInt32),
+            ("tvdb_id", pl.UInt32),
+            ("wikidata_numeric_id", pl.UInt32),
+        ]
+    ),
+}
 
 
 def align_id_col(df: pl.DataFrame) -> pl.DataFrame:
@@ -305,7 +328,7 @@ def tmdb_external_ids(
     if data.get("tvdb_id"):
         tvdb_id = data["tvdb_id"]
 
-    return {
+    result = {
         "id": tmdb_id,
         "success": success,
         "retrieved_at": retrieved_at,
@@ -313,6 +336,13 @@ def tmdb_external_ids(
         "tvdb_id": tvdb_id,
         "wikidata_numeric_id": wikidata_numeric_id,
     }
+
+    if tmdb_type == "movie":
+        if tvdb_id:
+            logger.error("movie id=%i had tvdb_id=%i", tmdb_id, tvdb_id)
+        del result["tvdb_id"]
+
+    return result
 
 
 def _tmdb_external_ids_iter(
@@ -380,7 +410,7 @@ def insert_tmdb_external_ids(
         tmdb_ids=df_to_update["id"],
         tmdb_api_key=tmdb_api_key,
     )
-    df_changes = pl.from_dicts(data, schema=_EXTERNAL_IDS_RESPONSE_SCHEMA)
+    df_changes = pl.from_dicts(data, schema=_EXTERNAL_IDS_RESPONSE_SCHEMA[tmdb_type])
     logger.debug("external id changes: %s", df_changes)
 
     if df_changes.is_empty():
@@ -504,6 +534,10 @@ def main(
         refresh_limit=refresh_limit,
         changes_days_limit=days_limit,
     )
+
+    if tmdb_type == "movie" and "tvdb_id" in df2:
+        logger.warning("Dropping movie tvdb_id column")
+        df2 = df2.drop("tvdb_id")
 
     if df2.height < df.height:
         logger.error(

@@ -347,7 +347,7 @@ def test_insert_tmdb_external_ids() -> None:
     assert row["success"] is True
     assert row["retrieved_at"] is not None
     assert row["imdb_numeric_id"] == 133093
-    assert row["tvdb_id"] is None
+    assert "tvdb_id" not in row
     assert row["wikidata_numeric_id"] == 83495
 
 
@@ -366,7 +366,7 @@ def test_tmdb_external_ids_movie() -> None:
     assert result["success"] is True
     assert result["retrieved_at"] >= _FEW_MINUTES_AGO
     assert result["imdb_numeric_id"] == 133093
-    assert result["tvdb_id"] is None
+    assert "tvdb_id" not in result
     assert result["wikidata_numeric_id"] == 83495
 
 
@@ -460,7 +460,6 @@ def test_process_with_backfill_initial() -> None:
         "success",
         "retrieved_at",
         "imdb_numeric_id",
-        "tvdb_id",
         "wikidata_numeric_id",
     ]
     df3 = df2.filter(pl.col("retrieved_at").is_not_null())
@@ -567,7 +566,6 @@ def test_process_with_refresh() -> None:
         "success",
         "retrieved_at",
         "imdb_numeric_id",
-        "tvdb_id",
         "wikidata_numeric_id",
     ]
     df3 = df2.filter(pl.col("retrieved_at").is_not_null())
