@@ -113,6 +113,36 @@ def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> str:
     return f"+{added} -{removed} ~{updated}"
 
 
+def compute_stats(df: pl.DataFrame) -> pl.DataFrame:
+    row_count = df.height
+
+    def fmt(n: int) -> str:
+        if n == 0 or row_count == 0:
+            return ""
+        return f"{n:,} ({n / row_count:.1%})"
+
+    rows = []
+    for name, dtype in df.schema.items():
+        s = df[name]
+        s_wo_null = s.drop_nulls()
+        nulls = s.null_count()
+        trues = int(s.sum()) if dtype == pl.Boolean else 0
+        falses = int((~s).sum()) if dtype == pl.Boolean else 0
+        unique = s_wo_null.n_unique() == s_wo_null.len()
+        rows.append(
+            {
+                "name": name,
+                "dtype": df.schema[name]._string_repr(),
+                "null": fmt(nulls),
+                "true": fmt(trues) if dtype == pl.Boolean else "",
+                "false": fmt(falses) if dtype == pl.Boolean else "",
+                "unique": "true" if unique else "",
+            }
+        )
+
+    return pl.DataFrame(rows)
+
+
 _TMDB_CHANGES_SCHEMA = pl.Schema(
     [
         ("id", pl.UInt32),
@@ -548,6 +578,7 @@ def main(
         exit(1)
 
     logger.debug(df2)
+    logger.info(compute_stats(df2))
     logger.info(change_summary(df, df2))
 
     if not dry_run:
