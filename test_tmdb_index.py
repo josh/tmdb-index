@@ -8,6 +8,7 @@ from tmdb_index import (
     TMDB_CHANGES_EPOCH,
     align_id_col,
     change_summary,
+    compute_tmdb_stats,
     export_available,
     export_date,
     fetch_jsonl_gz,
@@ -574,3 +575,59 @@ def test_update_tmdb_export_flag_empty() -> None:
     df2 = update_tmdb_export_flag(df, tmdb_type="movie")
     assert df2.columns == ["id", "value", "in_export"]
     assert df2.shape == (0, 3)
+
+
+def test_compute_tmdb_stats() -> None:
+    df = pl.DataFrame(
+        [
+            {
+                "id": 1,
+                "date": date(2024, 1, 1),
+                "adult": False,
+                "in_export": True,
+                "success": True,
+                "retrieved_at": datetime(2024, 1, 1, tzinfo=UTC),
+                "imdb_numeric_id": 10,
+                "tvdb_id": None,
+                "wikidata_numeric_id": 20,
+            },
+            {
+                "id": 2,
+                "date": None,
+                "adult": True,
+                "in_export": False,
+                "success": True,
+                "retrieved_at": datetime(2024, 1, 2, tzinfo=UTC),
+                "imdb_numeric_id": None,
+                "tvdb_id": None,
+                "wikidata_numeric_id": None,
+            },
+        ],
+        schema={
+            "id": pl.UInt32,
+            "date": pl.Date,
+            "adult": pl.Boolean,
+            "in_export": pl.Boolean,
+            "success": pl.Boolean,
+            "retrieved_at": pl.Datetime("ns"),
+            "imdb_numeric_id": pl.UInt32,
+            "tvdb_id": pl.UInt32,
+            "wikidata_numeric_id": pl.UInt32,
+        },
+    )
+    stats = compute_tmdb_stats(df)
+    assert stats.columns == [
+        "name",
+        "dtype",
+        "null",
+        "true",
+        "false",
+        "unique",
+        "updated",
+    ]
+    row_date = stats.filter(pl.col("name") == "date").row(0, named=True)
+    assert row_date["null"] == "1 (50.0%)"
+    row_adult = stats.filter(pl.col("name") == "adult").row(0, named=True)
+    assert row_adult["true"] == "1 (50.0%)"
+    row_id = stats.filter(pl.col("name") == "id").row(0, named=True)
+    assert row_id["unique"] == "true"

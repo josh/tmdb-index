@@ -12,6 +12,7 @@ from typing import Any, Literal
 
 import click
 import polars as pl
+from polars.datatypes.classes import _dtype_str_repr  # type: ignore[attr-defined]
 
 logger = logging.getLogger("tmdb-index")
 
@@ -262,6 +263,61 @@ def update_tmdb_export_flag(df: pl.DataFrame, tmdb_type: TMDB_TYPE) -> pl.DataFr
     )
 
     return df.with_columns(in_export=in_export_col).select(col_names)
+
+
+def compute_tmdb_stats(
+    df: pl.DataFrame, changes_df: pl.DataFrame | None = None
+) -> pl.DataFrame:
+    count = df.height
+
+    def _null_count(name: str) -> int:
+        return int(df.select(pl.col(name).null_count()).item())
+
+    def _true_count(name: str) -> int:
+        if df.schema[name] == pl.Boolean:
+            return int(df.select(pl.col(name).drop_nulls().sum()).item())
+        return 0
+
+    def _false_count(name: str) -> int:
+        if df.schema[name] == pl.Boolean:
+            return int(df.select(pl.col(name).drop_nulls().not_().sum()).item())
+        return 0
+
+    def _is_unique(name: str) -> bool:
+        return bool(df.select(pl.col(name).drop_nulls().is_unique().all()).item())
+
+    def _fmt_int(n: int) -> str:
+        return f"{n:,}" if n > 0 else ""
+
+    def _fmt_percent(n: int) -> str:
+        return f"{n:,} ({n / count:.1%})" if n > 0 else ""
+
+    rows: list[dict[str, str]] = []
+    for name in df.columns:
+        dtype = _dtype_str_repr(df.schema[name])
+        null = _fmt_percent(_null_count(name))
+        true = _fmt_percent(_true_count(name)) if df.schema[name] == pl.Boolean else ""
+        false = (
+            _fmt_percent(_false_count(name)) if df.schema[name] == pl.Boolean else ""
+        )
+        unique = "true" if _is_unique(name) else ""
+        updated = ""
+        if changes_df is not None:
+            col = f"{name}_updated"
+            if col in changes_df.columns:
+                updated = _fmt_int(int(changes_df[col].sum()))
+        rows.append(
+            {
+                "name": name,
+                "dtype": dtype,
+                "null": null,
+                "true": true,
+                "false": false,
+                "unique": unique,
+                "updated": updated,
+            }
+        )
+    return pl.DataFrame(rows)
 
 
 def tmdb_external_ids(
