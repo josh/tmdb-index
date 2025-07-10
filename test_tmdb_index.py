@@ -8,6 +8,7 @@ from tmdb_index import (
     TMDB_CHANGES_EPOCH,
     align_id_col,
     change_summary,
+    compute_stats,
     export_available,
     export_date,
     fetch_jsonl_gz,
@@ -574,3 +575,54 @@ def test_update_tmdb_export_flag_empty() -> None:
     df2 = update_tmdb_export_flag(df, tmdb_type="movie")
     assert df2.columns == ["id", "value", "in_export"]
     assert df2.shape == (0, 3)
+
+
+def test_compute_stats_basic() -> None:
+    df = pl.DataFrame(
+        {
+            "id": [1, 2, 3, 4],
+            "adult": [True, False, False, None],
+            "imdb_numeric_id": [10, 20, None, None],
+        },
+        schema={
+            "id": pl.UInt32,
+            "adult": pl.Boolean,
+            "imdb_numeric_id": pl.UInt32,
+        },
+    )
+    stats = compute_stats(df)
+    assert stats.columns == [
+        "name",
+        "dtype",
+        "null",
+        "true",
+        "false",
+        "unique",
+        "updated",
+    ]
+    row = stats.filter(pl.col("name") == "adult").row(0, named=True)
+    assert row["null"] == "1 (25.0%)"
+    assert row["true"] == "1 (25.0%)"
+    assert row["false"] == "2 (50.0%)"
+    row = stats.filter(pl.col("name") == "imdb_numeric_id").row(0, named=True)
+    assert row["null"] == "2 (50.0%)"
+    assert row["unique"] == "true"
+
+
+def test_compute_stats_with_changes() -> None:
+    df = pl.DataFrame(
+        {
+            "id": [1, 2],
+            "adult": [True, False],
+        },
+        schema={"id": pl.UInt32, "adult": pl.Boolean},
+    )
+    changes = pl.DataFrame(
+        {"id_updated": [2], "adult_updated": [1]},
+        schema={"id_updated": pl.UInt32, "adult_updated": pl.UInt32},
+    )
+    stats = compute_stats(df, changes_df=changes)
+    row = stats.filter(pl.col("name") == "id").row(0, named=True)
+    assert row["updated"] == "2"
+    row = stats.filter(pl.col("name") == "adult").row(0, named=True)
+    assert row["updated"] == "1"

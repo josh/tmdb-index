@@ -392,6 +392,67 @@ def insert_tmdb_external_ids(
     return df
 
 
+def compute_stats(
+    df: pl.DataFrame, changes_df: pl.DataFrame | None = None
+) -> pl.DataFrame:
+    count = df.height
+    rows: list[dict[str, str]] = []
+
+    for name in df.columns:
+        dtype = df.schema[name]._string_repr()
+        null_count = df.select(pl.col(name).null_count()).item()
+        if null_count:
+            null_str = f"{null_count:,} ({null_count / count:.1%})"
+        else:
+            null_str = ""
+
+        true_str = ""
+        false_str = ""
+        if df.schema[name] == pl.Boolean:
+            true_count = df.select(pl.col(name).drop_nulls().sum()).item()
+            false_count = df.select(pl.col(name).drop_nulls().not_().sum()).item()
+            if true_count:
+                true_str = f"{true_count:,} ({true_count / count:.1%})"
+            if false_count:
+                false_str = f"{false_count:,} ({false_count / count:.1%})"
+
+        unique = df[name].drop_nulls().is_unique().all()
+        unique_str: str = "true" if unique else ""
+
+        updated_str = ""
+        if changes_df is not None:
+            update_col = f"{name}_updated"
+            if update_col in changes_df.columns:
+                updated_count = int(changes_df.select(pl.col(update_col).sum()).item())
+                if updated_count:
+                    updated_str = f"{updated_count:,}"
+
+        rows.append(
+            {
+                "name": name,
+                "dtype": dtype,
+                "null": null_str,
+                "true": true_str,
+                "false": false_str,
+                "unique": unique_str,
+                "updated": updated_str,
+            }
+        )
+
+    return pl.DataFrame(
+        rows,
+        schema=[
+            ("name", pl.Utf8),
+            ("dtype", pl.Utf8),
+            ("null", pl.Utf8),
+            ("true", pl.Utf8),
+            ("false", pl.Utf8),
+            ("unique", pl.Utf8),
+            ("updated", pl.Utf8),
+        ],
+    )
+
+
 def process(
     df: pl.DataFrame,
     tmdb_type: TMDB_TYPE,
