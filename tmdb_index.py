@@ -526,6 +526,10 @@ def main(
         df = pl.DataFrame(schema={"id": pl.UInt32})
         logger.warning("original df not found, initializing empty dataframe")
 
+    if tmdb_type == "movie" and "tvdb_id" in df:
+        logger.warning("Dropping movie tvdb_id column")
+        df = df.drop("tvdb_id")
+
     df2 = process(
         df=df,
         tmdb_type=tmdb_type,
