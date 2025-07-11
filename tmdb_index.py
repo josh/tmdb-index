@@ -12,6 +12,7 @@ from typing import Any, Literal
 
 import click
 import polars as pl
+from tqdm import tqdm
 
 logger = logging.getLogger("tmdb-index")
 
@@ -183,7 +184,8 @@ def insert_tmdb_latest_changes(
     days_limit: int,
 ) -> pl.DataFrame:
     date_range = tmdb_changes_backfill_date_range(df, tmdb_type=tmdb_type)
-    for d in islice(date_range, days_limit):
+    dates = list(islice(date_range, days_limit))
+    for d in tqdm(dates, desc="changes", unit="day"):
         changes = tmdb_changes(
             tmdb_type=tmdb_type,
             date=d,
@@ -350,7 +352,8 @@ def _tmdb_external_ids_iter(
     tmdb_ids: Iterable[int],
     tmdb_api_key: str,
 ) -> Iterator[dict[str, Any]]:
-    for tmdb_id in tmdb_ids:
+    ids = list(tmdb_ids)
+    for tmdb_id in tqdm(ids, desc="external ids", unit="id"):
         yield tmdb_external_ids(
             tmdb_type=tmdb_type,
             tmdb_id=tmdb_id,
@@ -407,7 +410,7 @@ def insert_tmdb_external_ids(
 
     data = _tmdb_external_ids_iter(
         tmdb_type=tmdb_type,
-        tmdb_ids=df_to_update["id"],
+        tmdb_ids=df_to_update["id"].to_list(),
         tmdb_api_key=tmdb_api_key,
     )
     df_changes = pl.from_dicts(data, schema=_EXTERNAL_IDS_RESPONSE_SCHEMA[tmdb_type])
