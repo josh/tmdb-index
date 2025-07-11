@@ -539,10 +539,6 @@ def main(
         changes_days_limit=days_limit,
     )
 
-    if tmdb_type == "movie" and "tvdb_id" in df2:
-        logger.warning("Dropping movie tvdb_id column")
-        df2 = df2.drop("tvdb_id")
-
     if df2.height < df.height:
         logger.error(
             "df2 height %s is smaller than df height %s",
