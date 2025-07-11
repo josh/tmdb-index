@@ -153,10 +153,25 @@ def test_export_available_old_date_false() -> None:
     not os.environ.get("TMDB_API_KEY"),
     reason="TMDB_API_KEY not set",
 )
-def test_tmdb_changes() -> None:
+def test_tmdb_changes_movie() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df = tmdb_changes(
         tmdb_type="movie",
+        date=date(2025, 1, 1),
+        tmdb_api_key=tmdb_api_key,
+    )
+    assert df.columns == ["id", "date", "adult"]
+    assert df.shape == (100, 3)
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_tmdb_changes_tv() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    df = tmdb_changes(
+        tmdb_type="tv",
         date=date(2025, 1, 1),
         tmdb_api_key=tmdb_api_key,
     )
@@ -340,7 +355,7 @@ def test_insert_tmdb_external_ids() -> None:
     not os.environ.get("TMDB_API_KEY"),
     reason="TMDB_API_KEY not set",
 )
-def test_tmdb_external_ids() -> None:
+def test_tmdb_external_ids_movie() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     result = tmdb_external_ids(
         tmdb_type="movie",
@@ -353,6 +368,25 @@ def test_tmdb_external_ids() -> None:
     assert result["imdb_numeric_id"] == 133093
     assert result["tvdb_id"] is None
     assert result["wikidata_numeric_id"] == 83495
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
+def test_tmdb_external_ids_tv() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    result = tmdb_external_ids(
+        tmdb_type="tv",
+        tmdb_id=688,
+        tmdb_api_key=tmdb_api_key,
+    )
+    assert result["id"] == 688
+    assert result["success"] is True
+    assert result["retrieved_at"] >= _FEW_MINUTES_AGO
+    assert result["imdb_numeric_id"] == 200276
+    assert result["tvdb_id"] == 72521
+    assert result["wikidata_numeric_id"] == 3577037
 
 
 @pytest.mark.skipif(
@@ -441,7 +475,7 @@ def test_process_with_backfill_existing() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df1 = process(
         df=pl.DataFrame(),
-        tmdb_type="movie",
+        tmdb_type="tv",
         tmdb_api_key=tmdb_api_key,
         backfill_limit=3,
         refresh_limit=0,
@@ -480,7 +514,7 @@ def test_process_with_backfill_empty() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df = process(
         df=pl.DataFrame(),
-        tmdb_type="movie",
+        tmdb_type="person",
         tmdb_api_key=tmdb_api_key,
         backfill_limit=12,
         refresh_limit=0,
