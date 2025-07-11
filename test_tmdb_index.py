@@ -12,6 +12,7 @@ from tmdb_index import (
     export_available,
     export_date,
     fetch_jsonl_gz,
+    format_gh_step_summary,
     insert_tmdb_external_ids,
     insert_tmdb_latest_changes,
     process,
@@ -705,3 +706,32 @@ def test_compute_stats_empty() -> None:
     adult_stats = df_stats.row(index=1, named=True)
     assert adult_stats["name"] == "adult"
     assert adult_stats["dtype"] == "bool"
+
+
+def test_format_gh_step_summary() -> None:
+    schema = {"id": pl.UInt32, "adult": pl.Boolean}
+    df_old = pl.DataFrame(
+        data=[
+            {"id": 1, "adult": False},
+            {"id": 2, "adult": True},
+        ],
+        schema=schema,
+    )
+    df_new = pl.DataFrame(
+        data=[
+            {"id": 1, "adult": True},
+            {"id": 3, "adult": False},
+        ],
+        schema=schema,
+    )
+    actual = format_gh_step_summary(df_old, df_new)
+    expected = """
+| name (str) | dtype (str) | null (str) | true (str) | false (str) | unique (str) |
+|------------|-------------|------------|------------|-------------|--------------|
+| id         | u32         |            |            |             | true         |
+| adult      | bool        |            | 1 (50.0%)  | 1 (50.0%)   | true         |
+shape: (2, 2)
+changes: +1 -1 ~1
+rss: 0.0MB
+    """
+    assert actual.strip() == expected.strip()

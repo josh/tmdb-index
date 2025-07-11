@@ -7,6 +7,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Collection, Generator, Iterator
 from datetime import UTC, date, datetime, timedelta
+from io import StringIO
 from typing import Any, Literal
 
 import click
@@ -477,6 +478,28 @@ def process(
     return df
 
 
+def format_gh_step_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> str:
+    df_stats = compute_stats(df_new)
+    added, removed, updated = change_summary(df_old, df_new)
+
+    with pl.Config() as cfg:
+        cfg.set_fmt_str_lengths(100)
+        cfg.set_tbl_cols(-1)
+        cfg.set_tbl_column_data_type_inline(True)
+        cfg.set_tbl_formatting("ASCII_MARKDOWN")
+        cfg.set_tbl_hide_dataframe_shape(True)
+        cfg.set_tbl_rows(-1)
+        cfg.set_tbl_width_chars(500)
+
+        buf = StringIO()
+        print(df_stats, file=buf)
+        print(f"shape: ({df_new.shape[0]:,}, {df_new.shape[1]:,})", file=buf)
+        print(f"changes: +{added} -{removed} ~{updated}", file=buf)
+        print(f"rss: {df_new.estimated_size('mb'):,.1f}MB", file=buf)
+
+        return buf.getvalue()
+
+
 @click.command()
 @click.argument(
     "filename",
@@ -578,8 +601,13 @@ def main(
         exit(1)
 
     logger.debug(df2)
-    logger.info(compute_stats(df2))
-    logger.info(change_summary(df, df2))
+
+    summary_text = format_gh_step_summary(df, df2)
+    logger.debug(summary_text)
+
+    if "GITHUB_STEP_SUMMARY" in os.environ:
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+            f.write(summary_text)
 
     if not dry_run:
         df2.write_parquet(
