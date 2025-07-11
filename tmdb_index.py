@@ -104,13 +104,13 @@ def update_or_append(df: pl.DataFrame, other: pl.DataFrame) -> pl.DataFrame:
     return pl.concat([df, other]).unique(subset="id", keep="last", maintain_order=True)
 
 
-def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> str:
+def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> tuple[int, int, int]:
     added = df_new.join(df_old.select("id"), on="id", how="anti").height
     removed = df_old.join(df_new.select("id"), on="id", how="anti").height
     common = df_old.join(df_new.select("id"), on="id", how="semi").height
     unchanged = df_old.join(df_new, on=df_old.columns, how="inner").height
     updated = common - unchanged
-    return f"+{added} -{removed} ~{updated}"
+    return added, removed, updated
 
 
 def compute_stats(df: pl.DataFrame) -> pl.DataFrame:

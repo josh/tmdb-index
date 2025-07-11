@@ -99,8 +99,10 @@ def test_change_summary_reports_diffs() -> None:
         {"id": [1, 2], "value": [200, 30]},
         schema={"id": pl.UInt32, "value": pl.Int64},
     )
-    summary = change_summary(df1, df2)
-    assert summary == "+1 -1 ~1"
+    added, removed, updated = change_summary(df1, df2)
+    assert added == 1
+    assert removed == 1
+    assert updated == 1
 
 
 def test_change_summary_identical_rows() -> None:
@@ -112,8 +114,10 @@ def test_change_summary_identical_rows() -> None:
         {"id": [0], "value": [10]},
         schema={"id": pl.UInt32, "value": pl.Int64},
     )
-    summary = change_summary(df1, df2)
-    assert summary == "+0 -0 ~0"
+    added, removed, updated = change_summary(df1, df2)
+    assert added == 0
+    assert removed == 0
+    assert updated == 0
 
 
 def test_fetch_jsonl_gz_gzip_response() -> None:
