@@ -7,7 +7,6 @@ import urllib.error
 import urllib.request
 from collections.abc import Generator, Iterable, Iterator
 from datetime import UTC, date, datetime, timedelta
-from itertools import islice
 from typing import Any, Literal
 
 import click
@@ -182,8 +181,8 @@ def insert_tmdb_latest_changes(
     tmdb_api_key: str,
     days_limit: int,
 ) -> pl.DataFrame:
-    date_range = tmdb_changes_backfill_date_range(df, tmdb_type=tmdb_type)
-    for d in islice(date_range, days_limit):
+    date_range = tmdb_changes_backfill_date_range(df, tmdb_type=tmdb_type)[:days_limit]
+    for d in date_range:
         changes = tmdb_changes(
             tmdb_type=tmdb_type,
             date=d,
