@@ -5,7 +5,7 @@ import os
 import re
 import urllib.error
 import urllib.request
-from collections.abc import Generator, Iterable, Iterator
+from collections.abc import Collection, Generator, Iterator
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
@@ -346,7 +346,7 @@ def tmdb_external_ids(
 
 def _tmdb_external_ids_iter(
     tmdb_type: TMDB_TYPE,
-    tmdb_ids: Iterable[int],
+    tmdb_ids: Collection[int],
     tmdb_api_key: str,
 ) -> Iterator[dict[str, Any]]:
     for tmdb_id in tmdb_ids:
