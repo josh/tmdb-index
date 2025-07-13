@@ -28,7 +28,7 @@ strict = true
 [dependency-groups]
 dev = [
     "mypy>=1.0.0,<2.0",
-    "pytest>=8.0.0,<9.0",
     "pytest-cov>=6.0.0,<7.0",
+    "pytest>=8.0.0,<9.0",
     "ruff>=0.4.0",
 ]
