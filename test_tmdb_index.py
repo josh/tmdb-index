@@ -620,19 +620,19 @@ def test_compute_stats() -> None:
             {
                 "id": 1,
                 "date": date(2024, 1, 1),
-                "adult": False,
+                "adult": True,
                 "in_export": True,
                 "success": True,
                 "retrieved_at": datetime(2024, 1, 1, tzinfo=UTC),
                 "imdb_numeric_id": 111,
                 "tvdb_id": None,
-                "wikidata_numeric_id": 1001,
+                "wikidata_numeric_id": None,
             },
             {
                 "id": 2,
                 "date": None,
-                "adult": None,
-                "in_export": False,
+                "adult": False,
+                "in_export": True,
                 "success": True,
                 "retrieved_at": None,
                 "imdb_numeric_id": None,
@@ -642,11 +642,11 @@ def test_compute_stats() -> None:
             {
                 "id": 3,
                 "date": date(2024, 1, 3),
-                "adult": True,
+                "adult": None,
                 "in_export": True,
                 "success": False,
-                "retrieved_at": datetime(2024, 1, 3, tzinfo=UTC),
-                "imdb_numeric_id": 111,
+                "retrieved_at": datetime(2024, 1, 2, tzinfo=UTC),
+                "imdb_numeric_id": None,
                 "tvdb_id": None,
                 "wikidata_numeric_id": 1003,
             },
@@ -654,9 +654,9 @@ def test_compute_stats() -> None:
                 "id": 4,
                 "date": None,
                 "adult": False,
-                "in_export": True,
+                "in_export": False,
                 "success": True,
-                "retrieved_at": datetime(2024, 1, 4, tzinfo=UTC),
+                "retrieved_at": datetime(2024, 1, 2, tzinfo=UTC),
                 "imdb_numeric_id": None,
                 "tvdb_id": None,
                 "wikidata_numeric_id": 1004,
@@ -739,11 +739,13 @@ def test_compute_stats() -> None:
     assert id_stats["name"] == "id"
     assert id_stats["dtype"] == "u32"
     assert id_stats["unique"] == "true"
+    assert id_stats["updated"] == ""
 
     date_stats = df_stats.row(index=1, named=True)
     assert date_stats["name"] == "date"
     assert date_stats["dtype"] == "date"
     assert date_stats["null"] == "2 (50.0%)"
+    assert date_stats["updated"] == ""
 
     adult_stats = df_stats.row(index=2, named=True)
     assert adult_stats["name"] == "adult"
@@ -751,6 +753,7 @@ def test_compute_stats() -> None:
     assert adult_stats["null"] == "1 (25.0%)"
     assert adult_stats["true"] == "1 (25.0%)"
     assert adult_stats["false"] == "2 (50.0%)"
+    assert adult_stats["updated"] == "1 (25.0%)"
 
 
 def test_compute_stats_empty() -> None:
@@ -787,10 +790,10 @@ def test_format_gh_step_summary() -> None:
     expected = """
 ## tmdb-movie.parquet
 
-| name (str) | dtype (str) | null (str) | true (str) | false (str) | unique (str) |
-|------------|-------------|------------|------------|-------------|--------------|
-| id         | u32         |            |            |             | true         |
-| adult      | bool        |            | 1 (50.0%)  | 1 (50.0%)   | true         |
+| name (str) | dtype (str) | null (str) | true (str) | false (str) | unique (str) | updated (str) |
+|------------|-------------|------------|------------|-------------|--------------|---------------|
+| id         | u32         |            |            |             | true         | 1 (50.0%)     |
+| adult      | bool        |            | 1 (50.0%)  | 1 (50.0%)   | true         | 2 (100.0%)    |
 
 shape: (2, 2)
 changes: +1 -1 ~1

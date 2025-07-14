@@ -126,11 +126,14 @@ def compute_stats(df_old: pl.DataFrame, df_new: pl.DataFrame) -> pl.DataFrame:
     rows = []
     for name, dtype in df.schema.items():
         s = df[name]
+        s_old = df_old[name]
         s_wo_null = s.drop_nulls()
         nulls = s.null_count()
         trues = int(s.sum()) if dtype == pl.Boolean else 0
         falses = int((~s).sum()) if dtype == pl.Boolean else 0
         unique = s_wo_null.n_unique() == s_wo_null.len()
+        updated = int((s != s_old).sum())
+
         rows.append(
             {
                 "name": name,
@@ -139,6 +142,7 @@ def compute_stats(df_old: pl.DataFrame, df_new: pl.DataFrame) -> pl.DataFrame:
                 "true": fmt(trues) if dtype == pl.Boolean else "",
                 "false": fmt(falses) if dtype == pl.Boolean else "",
                 "unique": "true" if unique else "",
+                "updated": fmt(updated),
             }
         )
 
