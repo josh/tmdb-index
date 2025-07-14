@@ -478,7 +478,9 @@ def process(
     return df
 
 
-def format_gh_step_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> str:
+def format_gh_step_summary(
+    df_old: pl.DataFrame, df_new: pl.DataFrame, filename: str
+) -> str:
     df_stats = compute_stats(df_new)
     added, removed, updated = change_summary(df_old, df_new)
 
@@ -492,6 +494,8 @@ def format_gh_step_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> str:
         cfg.set_tbl_width_chars(500)
 
         buf = StringIO()
+        print(f"## {filename}", file=buf)
+        print("", file=buf)
         print(df_stats, file=buf)
         print("", file=buf)
         print(f"shape: ({df_new.shape[0]:,}, {df_new.shape[1]:,})", file=buf)
@@ -596,7 +600,7 @@ def main(
 
     logger.debug(df2)
 
-    summary_text = format_gh_step_summary(df, df2)
+    summary_text = format_gh_step_summary(df, df2, filename=filename)
     logger.debug(summary_text)
 
     if "GITHUB_STEP_SUMMARY" in os.environ:

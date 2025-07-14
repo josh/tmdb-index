@@ -35,7 +35,7 @@ jobs:
 
       - name: Update index
         run: |
-          uv run tmdb-index ./tmdb-${{ matrix.type }}.parquet
+          uv run tmdb-index tmdb-${{ matrix.type }}.parquet
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           TMDB_TYPE: ${{ matrix.type }}

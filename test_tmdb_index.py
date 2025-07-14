@@ -724,8 +724,10 @@ def test_format_gh_step_summary() -> None:
         ],
         schema=schema,
     )
-    actual = format_gh_step_summary(df_old, df_new)
+    actual = format_gh_step_summary(df_old, df_new, filename="tmdb-movie.parquet")
     expected = """
+## tmdb-movie.parquet
+
 | name (str) | dtype (str) | null (str) | true (str) | false (str) | unique (str) |
 |------------|-------------|------------|------------|-------------|--------------|
 | id         | u32         |            |            |             | true         |
