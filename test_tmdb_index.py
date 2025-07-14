@@ -559,7 +559,6 @@ def test_process_with_backfill_empty() -> None:
         "success",
         "retrieved_at",
         "imdb_numeric_id",
-        "tvdb_id",
         "wikidata_numeric_id",
     ]
     df2 = df.filter(pl.col("retrieved_at").is_not_null())

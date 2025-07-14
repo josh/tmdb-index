@@ -53,7 +53,6 @@ _EXTERNAL_IDS_RESPONSE_SCHEMA: dict[TMDB_TYPE, pl.Schema] = {
             ("id", pl.UInt32),
             ("retrieved_at", pl.Datetime(time_unit="ns")),
             ("imdb_numeric_id", pl.UInt32),
-            ("tvdb_id", pl.UInt32),
             ("wikidata_numeric_id", pl.UInt32),
         ]
     ),
@@ -400,9 +399,9 @@ def tmdb_external_ids(
         "wikidata_numeric_id": wikidata_numeric_id,
     }
 
-    if tmdb_type == "movie":
+    if tmdb_type != "tv":
         if tvdb_id:
-            logger.error("movie id=%i had tvdb_id=%i", tmdb_id, tvdb_id)
+            logger.error("%s id=%i had tvdb_id=%i", tmdb_type, tmdb_id, tvdb_id)
         del result["tvdb_id"]
 
     return result
@@ -614,8 +613,8 @@ def main(
         df = pl.DataFrame(schema={"id": pl.UInt32})
         logger.warning("original df not found, initializing empty dataframe")
 
-    if tmdb_type == "movie" and "tvdb_id" in df:
-        logger.warning("Dropping movie tvdb_id column")
+    if tmdb_type != "tv" and "tvdb_id" in df:
+        logger.warning("Dropping %s tvdb_id column", tmdb_type)
         df = df.drop("tvdb_id")
 
     df2 = process(
