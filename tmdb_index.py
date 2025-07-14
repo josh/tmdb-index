@@ -7,6 +7,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Collection, Generator, Iterator
 from datetime import UTC, date, datetime, timedelta
+from io import StringIO
 from typing import Any, Literal
 
 import click
@@ -104,13 +105,43 @@ def update_or_append(df: pl.DataFrame, other: pl.DataFrame) -> pl.DataFrame:
     return pl.concat([df, other]).unique(subset="id", keep="last", maintain_order=True)
 
 
-def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> str:
+def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> tuple[int, int, int]:
     added = df_new.join(df_old.select("id"), on="id", how="anti").height
     removed = df_old.join(df_new.select("id"), on="id", how="anti").height
     common = df_old.join(df_new.select("id"), on="id", how="semi").height
     unchanged = df_old.join(df_new, on=df_old.columns, how="inner").height
     updated = common - unchanged
-    return f"+{added} -{removed} ~{updated}"
+    return added, removed, updated
+
+
+def compute_stats(df: pl.DataFrame) -> pl.DataFrame:
+    row_count = df.height
+
+    def fmt(n: int) -> str:
+        if n == 0 or row_count == 0:
+            return ""
+        return f"{n:,} ({n / row_count:.1%})"
+
+    rows = []
+    for name, dtype in df.schema.items():
+        s = df[name]
+        s_wo_null = s.drop_nulls()
+        nulls = s.null_count()
+        trues = int(s.sum()) if dtype == pl.Boolean else 0
+        falses = int((~s).sum()) if dtype == pl.Boolean else 0
+        unique = s_wo_null.n_unique() == s_wo_null.len()
+        rows.append(
+            {
+                "name": name,
+                "dtype": df.schema[name]._string_repr(),
+                "null": fmt(nulls),
+                "true": fmt(trues) if dtype == pl.Boolean else "",
+                "false": fmt(falses) if dtype == pl.Boolean else "",
+                "unique": "true" if unique else "",
+            }
+        )
+
+    return pl.DataFrame(rows)
 
 
 _TMDB_CHANGES_SCHEMA = pl.Schema(
@@ -447,6 +478,28 @@ def process(
     return df
 
 
+def format_gh_step_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> str:
+    df_stats = compute_stats(df_new)
+    added, removed, updated = change_summary(df_old, df_new)
+
+    with pl.Config() as cfg:
+        cfg.set_fmt_str_lengths(100)
+        cfg.set_tbl_cols(-1)
+        cfg.set_tbl_column_data_type_inline(True)
+        cfg.set_tbl_formatting("ASCII_MARKDOWN")
+        cfg.set_tbl_hide_dataframe_shape(True)
+        cfg.set_tbl_rows(-1)
+        cfg.set_tbl_width_chars(500)
+
+        buf = StringIO()
+        print(df_stats, file=buf)
+        print(f"shape: ({df_new.shape[0]:,}, {df_new.shape[1]:,})", file=buf)
+        print(f"changes: +{added} -{removed} ~{updated}", file=buf)
+        print(f"rss: {df_new.estimated_size('mb'):,.1f}MB", file=buf)
+
+        return buf.getvalue()
+
+
 @click.command()
 @click.argument(
     "filename",
@@ -548,7 +601,13 @@ def main(
         exit(1)
 
     logger.debug(df2)
-    logger.info(change_summary(df, df2))
+
+    summary_text = format_gh_step_summary(df, df2)
+    logger.debug(summary_text)
+
+    if "GITHUB_STEP_SUMMARY" in os.environ:
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+            f.write(summary_text)
 
     if not dry_run:
         df2.write_parquet(
