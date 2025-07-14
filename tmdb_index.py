@@ -108,9 +108,11 @@ def update_or_append(df: pl.DataFrame, other: pl.DataFrame) -> pl.DataFrame:
 def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> tuple[int, int, int]:
     added = df_new.join(df_old.select("id"), on="id", how="anti").height
     removed = df_old.join(df_new.select("id"), on="id", how="anti").height
-    common = df_old.join(df_new.select("id"), on="id", how="semi").height
-    unchanged = df_old.join(df_new, on=df_old.columns, how="inner").height
-    updated = common - unchanged
+
+    old_hash = df_old.join(df_new.select("id"), on="id", how="semi").hash_rows()
+    new_hash = df_new.join(df_old.select("id"), on="id", how="semi").hash_rows()
+    updated = int((old_hash != new_hash).sum())
+
     return added, removed, updated
 
 

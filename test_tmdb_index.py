@@ -121,6 +121,21 @@ def test_change_summary_identical_rows() -> None:
     assert updated == 0
 
 
+def test_change_summary_columns_differ() -> None:
+    df1 = pl.DataFrame(
+        {"id": [0], "value": [10], "foo": [100]},
+        schema={"id": pl.UInt32, "value": pl.Int64, "foo": pl.Int64},
+    )
+    df2 = pl.DataFrame(
+        {"id": [0], "value": [10], "bar": [200]},
+        schema={"id": pl.UInt32, "value": pl.Int64, "bar": pl.Int64},
+    )
+    added, removed, updated = change_summary(df1, df2)
+    assert added == 0
+    assert removed == 0
+    assert updated == 1
+
+
 def test_fetch_jsonl_gz_gzip_response() -> None:
     d = date.today() - timedelta(days=3)
     url = (
