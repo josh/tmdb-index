@@ -82,58 +82,69 @@ def test_update_or_append_mismatched_columns() -> None:
 def test_update_or_append_empty_df() -> None:
     empty_df = pl.DataFrame()
     df2 = pl.DataFrame(
-        {"id": [1, 2], "value": [10, 20]},
+        {"id": [0, 1], "value": [10, 20]},
         schema={"id": pl.UInt32, "value": pl.Int64},
     )
     result = update_or_append(empty_df, df2)
     assert result.columns == ["id", "value"]
-    assert result["id"].to_list() == [1, 2]
+    assert result["id"].to_list() == [0, 1]
     assert result["value"].to_list() == [10, 20]
 
 
-def test_change_summary_reports_diffs() -> None:
+def test_change_summary_added() -> None:
     df1 = pl.DataFrame(
-        {"id": [0, 1], "value": [10, 20]},
+        {"id": [0, 1, 2], "value": [10, 20, 30]},
         schema={"id": pl.UInt32, "value": pl.Int64},
     )
     df2 = pl.DataFrame(
-        {"id": [1, 2], "value": [200, 30]},
+        {"id": [0, 1, 2, 3], "value": [10, 20, 30, 40]},
         schema={"id": pl.UInt32, "value": pl.Int64},
     )
     added, removed, updated = change_summary(df1, df2)
     assert added == 1
-    assert removed == 1
-    assert updated == 1
-
-
-def test_change_summary_identical_rows() -> None:
-    df1 = pl.DataFrame(
-        {"id": [0], "value": [10]},
-        schema={"id": pl.UInt32, "value": pl.Int64},
-    )
-    df2 = pl.DataFrame(
-        {"id": [0], "value": [10]},
-        schema={"id": pl.UInt32, "value": pl.Int64},
-    )
-    added, removed, updated = change_summary(df1, df2)
-    assert added == 0
     assert removed == 0
     assert updated == 0
 
 
-def test_change_summary_columns_differ() -> None:
+def test_change_summary_removed() -> None:
     df1 = pl.DataFrame(
-        {"id": [0], "value": [10], "foo": [100]},
-        schema={"id": pl.UInt32, "value": pl.Int64, "foo": pl.Int64},
+        {"id": [0, 1, 2, 3], "value": [10, 20, 30, 40]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
     )
     df2 = pl.DataFrame(
-        {"id": [0], "value": [10], "bar": [200]},
-        schema={"id": pl.UInt32, "value": pl.Int64, "bar": pl.Int64},
+        {"id": [0, 1, 2], "value": [10, 20, 30]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
+    )
+    added, removed, updated = change_summary(df1, df2)
+    assert added == 0
+    assert removed == 1
+    assert updated == 0
+
+
+def test_change_summary_updated() -> None:
+    df1 = pl.DataFrame(
+        {"id": [0, 1, 2], "value": [10, 20, 30]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
+    )
+    df2 = pl.DataFrame(
+        {"id": [0, 1, 2], "value": [100, 200, 30]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
     )
     added, removed, updated = change_summary(df1, df2)
     assert added == 0
     assert removed == 0
-    assert updated == 1
+    assert updated == 2
+
+
+def test_change_summary_noop() -> None:
+    df = pl.DataFrame(
+        {"id": [0], "value": [10]},
+        schema={"id": pl.UInt32, "value": pl.Int64},
+    )
+    added, removed, updated = change_summary(df, df)
+    assert added == 0
+    assert removed == 0
+    assert updated == 0
 
 
 def test_fetch_jsonl_gz_gzip_response() -> None:
@@ -778,15 +789,16 @@ def test_format_gh_step_summary() -> None:
     schema = {"id": pl.UInt32, "adult": pl.Boolean}
     df_old = pl.DataFrame(
         data=[
+            {"id": 0, "adult": False},
             {"id": 1, "adult": False},
-            {"id": 2, "adult": True},
         ],
         schema=schema,
     )
     df_new = pl.DataFrame(
         data=[
+            {"id": 0, "adult": False},
             {"id": 1, "adult": True},
-            {"id": 3, "adult": False},
+            {"id": 2, "adult": False},
         ],
         schema=schema,
     )
@@ -796,11 +808,11 @@ def test_format_gh_step_summary() -> None:
 
 | name (str) | dtype (str) | null (str) | true (str) | false (str) | unique (str) | updated (str) |
 |------------|-------------|------------|------------|-------------|--------------|---------------|
-| id         | u32         |            |            |             | true         | 1 (50.0%)     |
-| adult      | bool        |            | 1 (50.0%)  | 1 (50.0%)   | true         | 2 (100.0%)    |
+| id         | u32         |            |            |             | true         |               |
+| adult      | bool        |            | 1 (33.3%)  | 2 (66.7%)   |              | 1 (33.3%)     |
 
-shape: (2, 2)
-changes: +1 -1 ~1
+shape: (3, 2)
+changes: +1 -0 ~1
 rss: 0.0MB
     """
     assert actual.strip() == expected.strip()

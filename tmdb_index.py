@@ -105,13 +105,30 @@ def update_or_append(df: pl.DataFrame, other: pl.DataFrame) -> pl.DataFrame:
     return pl.concat([df, other]).unique(subset="id", keep="last", maintain_order=True)
 
 
-def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> tuple[int, int, int]:
-    added = df_new.join(df_old.select("id"), on="id", how="anti").height
-    removed = df_old.join(df_new.select("id"), on="id", how="anti").height
+def _validate_id(s: pl.Series) -> None:
+    if s.is_empty():
+        return
+    assert s[0] == 0, "id column must start at 0"
+    assert s.is_sorted(), "id column must be sorted"
+    assert s.n_unique() == len(s), "id column must be unique"
+    assert s.null_count() == 0, "id column must not have nulls"
+    assert s[-1] == len(s) - 1, "id column must be consecutive"
 
-    old_hash = df_old.join(df_new.select("id"), on="id", how="semi").hash_rows()
-    new_hash = df_new.join(df_old.select("id"), on="id", how="semi").hash_rows()
-    updated = int((old_hash != new_hash).sum())
+
+def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> tuple[int, int, int]:
+    new_len = len(df_new["id"])
+    old_len = len(df_old["id"])
+    min_len = min(new_len, old_len)
+
+    if new_len > old_len:
+        added = new_len - old_len
+        removed = 0
+    else:
+        added = 0
+        removed = old_len - new_len
+
+    updated_s = df_old[:min_len].hash_rows() != df_new[:min_len].hash_rows()
+    updated = int(updated_s.sum())
 
     return added, removed, updated
 
@@ -498,6 +515,9 @@ def format_gh_step_summary(
     df_new: pl.DataFrame,
     filename: str,
 ) -> str:
+    _validate_id(df_old["id"])
+    _validate_id(df_new["id"])
+
     df_stats = compute_stats(df_new=df_new, df_old=df_old)
     added, removed, updated = change_summary(df_old=df_old, df_new=df_new)
 
