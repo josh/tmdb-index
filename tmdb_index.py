@@ -116,6 +116,13 @@ def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> tuple[int, int
     return added, removed, updated
 
 
+def _series_pad(s: pl.Series, length: int) -> pl.Series:
+    n = length - s.len()
+    if n > 0:
+        return s.extend_constant(None, n=n)
+    return s
+
+
 def compute_stats(df_old: pl.DataFrame, df_new: pl.DataFrame) -> pl.DataFrame:
     df = df_new
     row_count = df.height
@@ -129,12 +136,13 @@ def compute_stats(df_old: pl.DataFrame, df_new: pl.DataFrame) -> pl.DataFrame:
     for name, dtype in df.schema.items():
         s = df[name]
         s_old = df_old[name]
+        max_len = max(s.len(), s_old.len())
         s_wo_null = s.drop_nulls()
         nulls = s.null_count()
         trues = int(s.sum()) if dtype == pl.Boolean else 0
         falses = int((~s).sum()) if dtype == pl.Boolean else 0
         unique = s_wo_null.n_unique() == s_wo_null.len()
-        updated = int((s != s_old).sum())
+        updated = int((_series_pad(s, max_len) != _series_pad(s_old, max_len)).sum())
 
         rows.append(
             {

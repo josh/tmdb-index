@@ -665,17 +665,6 @@ def test_compute_stats() -> None:
                 "tvdb_id": None,
                 "wikidata_numeric_id": 1003,
             },
-            {
-                "id": 4,
-                "date": None,
-                "adult": False,
-                "in_export": False,
-                "success": True,
-                "retrieved_at": datetime(2024, 1, 2, tzinfo=UTC),
-                "imdb_numeric_id": None,
-                "tvdb_id": None,
-                "wikidata_numeric_id": 1004,
-            },
         ],
         schema={
             "id": pl.UInt32,
