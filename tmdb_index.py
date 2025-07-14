@@ -565,13 +565,6 @@ def main(
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
 
     pl.enable_string_cache()
-    pl.Config.set_fmt_str_lengths(100)
-    pl.Config.set_tbl_cols(-1)
-    pl.Config.set_tbl_column_data_type_inline(True)
-    pl.Config.set_tbl_formatting("ASCII_MARKDOWN")
-    pl.Config.set_tbl_hide_dataframe_shape(True)
-    pl.Config.set_tbl_rows(100)
-    pl.Config.set_tbl_width_chars(500)
 
     if os.path.exists(filename):
         df = pl.read_parquet(filename)
