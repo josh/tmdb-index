@@ -615,7 +615,7 @@ def test_update_tmdb_export_flag_empty() -> None:
 
 
 def test_compute_stats() -> None:
-    df = pl.DataFrame(
+    df_old = pl.DataFrame(
         [
             {
                 "id": 1,
@@ -674,7 +674,66 @@ def test_compute_stats() -> None:
             "wikidata_numeric_id": pl.UInt32,
         },
     )
-    df_stats = compute_stats(df)
+    df_new = pl.DataFrame(
+        [
+            {
+                "id": 1,
+                "date": date(2024, 1, 1),
+                "adult": False,
+                "in_export": True,
+                "success": True,
+                "retrieved_at": datetime(2024, 1, 1, tzinfo=UTC),
+                "imdb_numeric_id": 111,
+                "tvdb_id": None,
+                "wikidata_numeric_id": 1001,
+            },
+            {
+                "id": 2,
+                "date": None,
+                "adult": None,
+                "in_export": False,
+                "success": True,
+                "retrieved_at": None,
+                "imdb_numeric_id": None,
+                "tvdb_id": None,
+                "wikidata_numeric_id": None,
+            },
+            {
+                "id": 3,
+                "date": date(2024, 1, 3),
+                "adult": True,
+                "in_export": True,
+                "success": False,
+                "retrieved_at": datetime(2024, 1, 3, tzinfo=UTC),
+                "imdb_numeric_id": 111,
+                "tvdb_id": None,
+                "wikidata_numeric_id": 1003,
+            },
+            {
+                "id": 4,
+                "date": None,
+                "adult": False,
+                "in_export": True,
+                "success": True,
+                "retrieved_at": datetime(2024, 1, 4, tzinfo=UTC),
+                "imdb_numeric_id": None,
+                "tvdb_id": None,
+                "wikidata_numeric_id": 1004,
+            },
+        ],
+        schema={
+            "id": pl.UInt32,
+            "date": pl.Date,
+            "adult": pl.Boolean,
+            "in_export": pl.Boolean,
+            "success": pl.Boolean,
+            "retrieved_at": pl.Datetime("ns"),
+            "imdb_numeric_id": pl.UInt32,
+            "tvdb_id": pl.UInt32,
+            "wikidata_numeric_id": pl.UInt32,
+        },
+    )
+    df_stats = compute_stats(df_old=df_old, df_new=df_new)
 
     id_stats = df_stats.row(index=0, named=True)
     assert id_stats["name"] == "id"
@@ -696,7 +755,7 @@ def test_compute_stats() -> None:
 
 def test_compute_stats_empty() -> None:
     df = pl.DataFrame(schema={"id": pl.UInt32, "adult": pl.Boolean})
-    df_stats = compute_stats(df)
+    df_stats = compute_stats(df_old=df, df_new=df)
 
     id_stats = df_stats.row(index=0, named=True)
     assert id_stats["name"] == "id"

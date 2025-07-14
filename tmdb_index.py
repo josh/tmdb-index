@@ -114,7 +114,8 @@ def change_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> tuple[int, int
     return added, removed, updated
 
 
-def compute_stats(df: pl.DataFrame) -> pl.DataFrame:
+def compute_stats(df_old: pl.DataFrame, df_new: pl.DataFrame) -> pl.DataFrame:
+    df = df_new
     row_count = df.height
 
     def fmt(n: int) -> str:
@@ -479,10 +480,12 @@ def process(
 
 
 def format_gh_step_summary(
-    df_old: pl.DataFrame, df_new: pl.DataFrame, filename: str
+    df_old: pl.DataFrame,
+    df_new: pl.DataFrame,
+    filename: str,
 ) -> str:
-    df_stats = compute_stats(df_new)
-    added, removed, updated = change_summary(df_old, df_new)
+    df_stats = compute_stats(df_new=df_new, df_old=df_old)
+    added, removed, updated = change_summary(df_old=df_old, df_new=df_new)
 
     with pl.Config() as cfg:
         cfg.set_fmt_str_lengths(100)
@@ -600,7 +603,7 @@ def main(
 
     logger.debug(df2)
 
-    summary_text = format_gh_step_summary(df, df2, filename=filename)
+    summary_text = format_gh_step_summary(df_old=df, df_new=df2, filename=filename)
     logger.debug(summary_text)
 
     if "GITHUB_STEP_SUMMARY" in os.environ:
