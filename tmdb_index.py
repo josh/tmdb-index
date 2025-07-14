@@ -493,6 +493,7 @@ def format_gh_step_summary(df_old: pl.DataFrame, df_new: pl.DataFrame) -> str:
 
         buf = StringIO()
         print(df_stats, file=buf)
+        print("", file=buf)
         print(f"shape: ({df_new.shape[0]:,}, {df_new.shape[1]:,})", file=buf)
         print(f"changes: +{added} -{removed} ~{updated}", file=buf)
         print(f"rss: {df_new.estimated_size('mb'):,.1f}MB", file=buf)
