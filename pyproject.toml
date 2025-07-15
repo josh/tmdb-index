@@ -1,36 +1,42 @@
 [build-system]
-requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+requires = [ "hatchling" ]
 
 [project]
 name = "tmdb-index"
 version = "0.1.0"
 readme = "README.md"
-authors = [{ name = "Joshua Peek" }]
+authors = [ { name = "Joshua Peek" } ]
 requires-python = ">=3.12"
-dependencies = [
-    "click>=8.0.0,<9.0",
-    "polars>=1.27.0,<2.0",
-    "tqdm>=4.0.1,<5.0",
-]
 classifiers = [
     "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
-[project.scripts]
-tmdb-index = "tmdb_index:main"
-
-[tool.ruff.lint]
-extend-select = ["I", "UP"]
-
-[tool.mypy]
-strict = true
+dependencies = [
+    "click>=8,<9",
+    "polars>=1.27,<2",
+    "tqdm>=4.0.1,<5",
+]
+scripts.tmdb-index = "tmdb_index:main"
 
 [dependency-groups]
 dev = [
-    "mypy>=1.0.0,<2.0",
-    "pytest-cov>=6.0.0,<7.0",
-    "pytest>=8.0.0,<9.0",
-    "ruff>=0.4.0",
-    "types-tqdm>=4.0.0,<5.0",
+    "mypy>=1,<2",
+    "pytest>=8,<9",
+    "pytest-cov>=6,<7",
+    "ruff>=0.4",
+    "types-tqdm>=4,<5",
 ]
+
+[tool.ruff]
+lint.extend-select = [ "I", "UP" ]
+
+[tool.pyproject-fmt]
+indent = 4
+
+[tool.mypy]
+strict = true
