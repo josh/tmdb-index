@@ -59,6 +59,12 @@ Functions should be sorted in dependency order with:
 $ uv tool run ssort .
 ```
 
+After making changes to `pyproject.toml`, ensure its formatted with `pyproject-fmt`.
+
+```sh
+uv tool run pyproject-fmt pyproject.toml
+```
+
 ## Code Quality
 
 You can generate a code coverage report while running the test suite with:
