@@ -17,7 +17,6 @@ from tqdm import tqdm
 logger = logging.getLogger("tmdb-index")
 
 TMDB_TYPE = Literal["movie", "tv", "person"]
-_TMDB_TYPES: set[TMDB_TYPE] = {"movie", "tv", "person"}
 
 _IMDB_ID_PATTERN: dict[TMDB_TYPE, str] = {
     "movie": r"tt(\d+)",
