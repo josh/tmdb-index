@@ -39,6 +39,9 @@ jobs:
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           TMDB_TYPE: ${{ matrix.type }}
+          TMDB_BACKFILL_LIMIT: ${{ vars.TMDB_BACKFILL_LIMIT }}
+          TMDB_DAYS_LIMIT: ${{ vars.TMDB_DAYS_LIMIT }}
+          TMDB_REFRESH_LIMIT: ${{ vars.TMDB_REFRESH_LIMIT }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
