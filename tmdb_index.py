@@ -31,8 +31,6 @@ _EXTERNAL_IDS_RESPONSE_SCHEMA: dict[TMDB_TYPE, pl.Schema] = {
             ("id", pl.UInt32),
             ("retrieved_at", pl.Datetime(time_unit="ns")),
             ("imdb_numeric_id", pl.UInt32),
-            # movies never have tvdb ids
-            # ("tvdb_id", pl.UInt32),
             ("wikidata_numeric_id", pl.UInt32),
         ]
     ),
@@ -42,7 +40,7 @@ _EXTERNAL_IDS_RESPONSE_SCHEMA: dict[TMDB_TYPE, pl.Schema] = {
             ("id", pl.UInt32),
             ("retrieved_at", pl.Datetime(time_unit="ns")),
             ("imdb_numeric_id", pl.UInt32),
-            ("tvdb_id", pl.UInt32),
+            ("tvdb_id", pl.UInt32),  # Only tv shows have tvdb ids
             ("wikidata_numeric_id", pl.UInt32),
         ]
     ),
