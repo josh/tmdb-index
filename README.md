@@ -1,6 +1,6 @@
 # tmdb-index
 
-An enhanced version of the [TMDB Daily ID Export](https://developer.themoviedb.org/docs/daily-id-exports) as a parquet file.
+An enhanced version of the [TMDB Daily ID Export](https://developer.themoviedb.org/docs/daily-id-exports) as a [parquet file](https://parquet.apache.org/).
 
 ```
 >>> import polars as pl
