@@ -27,8 +27,8 @@ Note that when running in an offline sandbox, you may need to run uv with the `-
 Check code style with ruff:
 
 ```sh
-$ uv tool run ruff format --diff .
-$ uv tool run ruff check .
+$ uv run ruff format --diff .
+$ uv run ruff check .
 ```
 
 Check type correctness with mypy:
