@@ -1,25 +1,21 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = [ "hatchling" ]
+requires = ["hatchling"]
 
 [project]
 name = "tmdb-index"
-version = "0.1.0"
+version = "1.0.0"
 readme = "README.md"
 license = "MIT"
-license-files = [ "LICENSE" ]
-authors = [ { name = "Joshua Peek" } ]
+license-files = ["LICENSE"]
+authors = [{ name = "Joshua Peek" }]
 requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-dependencies = [
-    "click>=8.2,<9",
-    "polars>=1.30,<2",
-    "tqdm>=4.21,<5",
-]
+dependencies = ["click>=8.2,<9", "polars>=1.30,<2", "tqdm>=4.21,<5"]
 scripts.tmdb-index = "tmdb_index:main"
 
 [dependency-groups]
@@ -32,7 +28,7 @@ dev = [
 ]
 
 [tool.ruff]
-lint.extend-select = [ "I", "UP" ]
+lint.extend-select = ["I", "UP"]
 
 [tool.pyproject-fmt]
 indent = 4
