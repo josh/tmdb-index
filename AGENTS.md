@@ -62,7 +62,7 @@ $ uv tool run ssort .
 After making changes to `pyproject.toml`, ensure its formatted with `pyproject-fmt`.
 
 ```sh
-uv tool run pyproject-fmt pyproject.toml
+$ uv tool run pyproject-fmt pyproject.toml
 ```
 
 ## Code Quality
