@@ -323,13 +323,30 @@ def _tmdb_raw_export(tmdb_type: _TMDB_EXPORT_TYPE) -> pl.DataFrame:
 
 def tmdb_export(tmdb_type: TMDB_TYPE) -> pl.DataFrame:
     if tmdb_type == "movie":
-        return pl.concat(
-            [_tmdb_raw_export("movie"), _tmdb_raw_export("collection")]
-        ).sort("id")
+        movie_df = _tmdb_raw_export("movie")
+        collection_df = _tmdb_raw_export("collection")
+        df = pl.concat([movie_df, collection_df]).sort("id")
+
+        if df["id"].n_unique() == df.height:
+            return df
+        else:
+            logger.warning(
+                "daily export for movie and collection had duplicate IDs: %s",
+                duplicate_ids(df),
+            )
+            return df.unique(
+                subset=["id"],
+                keep="first",
+                maintain_order=False,
+            ).sort("id")
     elif tmdb_type == "tv":
         return _tmdb_raw_export("tv_series")
     elif tmdb_type == "person":
         return _tmdb_raw_export("person")
+
+
+def duplicate_ids(df: pl.DataFrame) -> set[int]:
+    return set(df["id"].filter(df["id"].is_duplicated()))
 
 
 def update_tmdb_export_flag(df: pl.DataFrame, tmdb_type: TMDB_TYPE) -> pl.DataFrame:

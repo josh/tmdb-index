@@ -9,6 +9,7 @@ from tmdb_index import (
     align_id_col,
     change_summary,
     compute_stats,
+    duplicate_ids,
     export_available,
     export_date,
     fetch_jsonl_gz,
@@ -181,6 +182,12 @@ def test_export_available_old_date_false() -> None:
     assert export_available("movie", old) is False
 
 
+def test_duplicate_ids() -> None:
+    df = pl.DataFrame({"id": [1, 2, 2, 3, 4, 4, 4]})
+    ids = duplicate_ids(df)
+    assert ids == {2, 4}
+
+
 @pytest.mark.skipif(
     not os.environ.get("TMDB_API_KEY"),
     reason="TMDB_API_KEY not set",
@@ -230,18 +237,21 @@ def test_tmdb_export_movie() -> None:
     df = tmdb_export(tmdb_type="movie")
     assert df.columns == ["id", "in_export"]
     assert df.shape[0] > 1_000_000
+    assert df["id"].n_unique() == df.height
 
 
 def test_tmdb_export_tv() -> None:
     df = tmdb_export(tmdb_type="tv")
     assert df.columns == ["id", "in_export"]
     assert df.shape[0] > 100_000
+    assert df["id"].n_unique() == df.height
 
 
 def test_tmdb_export_person() -> None:
     df = tmdb_export(tmdb_type="person")
     assert df.columns == ["id", "in_export"]
     assert df.shape[0] > 1_000_000
+    assert df["id"].n_unique() == df.height
 
 
 @pytest.mark.skipif(
