@@ -3,12 +3,13 @@ import json
 import logging
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Collection, Generator, Iterator
 from datetime import UTC, date, datetime, timedelta
 from io import StringIO
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import click
 import polars as pl
@@ -321,6 +322,10 @@ def _tmdb_raw_export(tmdb_type: _TMDB_EXPORT_TYPE) -> pl.DataFrame:
     return df
 
 
+def duplicate_ids(df: pl.DataFrame) -> set[int]:
+    return set(df["id"].filter(df["id"].is_duplicated()))
+
+
 def tmdb_export(tmdb_type: TMDB_TYPE) -> pl.DataFrame:
     if tmdb_type == "movie":
         movie_df = _tmdb_raw_export("movie")
@@ -345,10 +350,6 @@ def tmdb_export(tmdb_type: TMDB_TYPE) -> pl.DataFrame:
         return _tmdb_raw_export("person")
 
 
-def duplicate_ids(df: pl.DataFrame) -> set[int]:
-    return set(df["id"].filter(df["id"].is_duplicated()))
-
-
 def update_tmdb_export_flag(df: pl.DataFrame, tmdb_type: TMDB_TYPE) -> pl.DataFrame:
     col_names = df.columns
     if "in_export" not in df.columns:
@@ -363,31 +364,43 @@ def update_tmdb_export_flag(df: pl.DataFrame, tmdb_type: TMDB_TYPE) -> pl.DataFr
     return df.with_columns(in_export=in_export_col).select(col_names)
 
 
+def _fetch_json(url: str, retries: int = 3) -> Any:
+    req = urllib.request.Request(url)
+    exc: Exception | None = None
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            logger.error("HTTP error fetching %s: %s", url, e)
+            raise
+        except (urllib.error.URLError, TimeoutError) as e:
+            exc = e
+            if attempt == retries - 1:
+                logger.warning("Error fetching %s: %s", url, e)
+            else:
+                time.sleep(2**attempt)
+    assert exc is not None
+    raise exc
+
+
 def tmdb_external_ids(
     tmdb_type: TMDB_TYPE,
     tmdb_id: int,
     tmdb_api_key: str,
+    retries: int = 3,
 ) -> dict[str, Any]:
     url = f"https://api.themoviedb.org/3/{tmdb_type}/{tmdb_id}/external_ids?api_key={tmdb_api_key}"
-
-    success: bool = False
     retrieved_at: datetime = datetime.now(UTC)
     imdb_numeric_id: int | None = None
     tvdb_id: int | None = None
     wikidata_numeric_id: int | None = None
 
-    req = urllib.request.Request(url)
-    try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.load(response)
-            success = True
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            data = {}
-            success = False
-        else:
-            logger.error(f"Error fetching external IDs for {tmdb_type} {tmdb_id}: {e}")
-            raise
+    raw_data = _fetch_json(url, retries)
+    success: bool = raw_data is not None
+    data: dict[str, Any] = cast(dict[str, Any], raw_data or {})
 
     if data.get("imdb_id"):
         if m := re.search(_IMDB_ID_PATTERN[tmdb_type], data["imdb_id"]):
