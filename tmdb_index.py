@@ -17,6 +17,22 @@ from tqdm import tqdm
 
 logger = logging.getLogger("tmdb-index")
 
+
+def _configure_logger(verbose: bool) -> None:
+    in_gha = os.getenv("GITHUB_ACTIONS") == "true"
+    gh_fmt = "::%(levelname)s file=%(pathname)s,line=%(lineno)d::%(message)s"
+    default_fmt = "%(levelname)s %(name)s:%(lineno)d %(message)s"
+    logging.basicConfig(
+        level=logging.DEBUG if verbose else logging.INFO,
+        format=gh_fmt if in_gha else default_fmt,
+        datefmt="%Y-%m-%d %H:%M",
+    )
+    logging.addLevelName(logging.ERROR, "error")
+    logging.addLevelName(logging.WARNING, "warning")
+    logging.addLevelName(logging.INFO, "notice")
+    logging.addLevelName(logging.DEBUG, "debug")
+
+
 TMDB_TYPE = Literal["movie", "tv", "person"]
 
 _IMDB_ID_PATTERN: dict[TMDB_TYPE, str] = {
@@ -629,7 +645,7 @@ def main(
     refresh_limit: int,
     days_limit: int,
 ) -> None:
-    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
+    _configure_logger(verbose)
 
     pl.enable_string_cache()
 
