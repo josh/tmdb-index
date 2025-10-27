@@ -44,7 +44,7 @@ jobs:
           TMDB_REFRESH_LIMIT: ${{ vars.TMDB_REFRESH_LIMIT }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: tmdb-${{ matrix.type }}
           path: tmdb-${{ matrix.type }}.parquet
