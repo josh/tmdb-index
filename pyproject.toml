@@ -25,7 +25,7 @@ scripts.tmdb-index = "tmdb_index:main"
 [dependency-groups]
 dev = [
     "mypy>=1.4,<2",
-    "pytest>=8.4,<9",
+    "pytest>=8.4,<10",
     "pytest-cov>=6,<7",
     "ruff>=0.9,<2",
     "types-tqdm>=4.21,<5",
