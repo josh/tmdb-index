@@ -364,7 +364,7 @@ def update_tmdb_export_flag(df: pl.DataFrame, tmdb_type: TMDB_TYPE) -> pl.DataFr
     return df.with_columns(in_export=in_export_col).select(col_names)
 
 
-def _fetch_json(url: str, retries: int = 3) -> Any:
+def _fetch_json(url: str, retries: int = 5) -> Any:
     req = urllib.request.Request(url)
     exc: Exception | None = None
     for attempt in range(retries):
@@ -374,6 +374,20 @@ def _fetch_json(url: str, retries: int = 3) -> Any:
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
+            if e.code == 429:
+                exc = e
+                if attempt == retries - 1:
+                    logger.warning("HTTP 429 fetching %s; giving up", url)
+                    break
+                retry_after = e.headers.get("Retry-After") if e.headers else None
+                try:
+                    delay = float(retry_after) if retry_after else 2**attempt
+                except ValueError:
+                    delay = 2**attempt
+                delay = min(max(delay, 1.0), 60.0)
+                logger.warning("HTTP 429 fetching %s; retrying in %.1fs", url, delay)
+                time.sleep(delay)
+                continue
             logger.error("HTTP error fetching %s: %s", url, e)
             raise
         except (urllib.error.URLError, TimeoutError) as e:
