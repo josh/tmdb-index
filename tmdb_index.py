@@ -25,6 +25,8 @@ _IMDB_ID_PATTERN: dict[TMDB_TYPE, str] = {
     "person": r"nm(\d+)",
 }
 
+_UINT32_MAX = 2**32 - 1
+
 _EXTERNAL_IDS_RESPONSE_SCHEMA: dict[TMDB_TYPE, pl.Schema] = {
     "movie": pl.Schema(
         [
@@ -400,6 +402,15 @@ def _fetch_json(url: str, retries: int = 5) -> Any:
     raise exc
 
 
+def _clamp_uint32(value: int | None, label: str) -> int | None:
+    if value is None:
+        return None
+    if 0 <= value <= _UINT32_MAX:
+        return value
+    logger.warning("%s value %i out of UInt32 range, discarding", label, value)
+    return None
+
+
 def tmdb_external_ids(
     tmdb_type: TMDB_TYPE,
     tmdb_id: int,
@@ -430,6 +441,13 @@ def tmdb_external_ids(
 
     if data.get("tvdb_id"):
         tvdb_id = data["tvdb_id"]
+
+    label = f"{tmdb_type} id={tmdb_id}"
+    imdb_numeric_id = _clamp_uint32(imdb_numeric_id, f"{label} imdb_numeric_id")
+    tvdb_id = _clamp_uint32(tvdb_id, f"{label} tvdb_id")
+    wikidata_numeric_id = _clamp_uint32(
+        wikidata_numeric_id, f"{label} wikidata_numeric_id"
+    )
 
     result = {
         "id": tmdb_id,
