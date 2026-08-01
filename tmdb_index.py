@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -233,7 +234,7 @@ def tmdb_changes_backfill_date_range(
         assert max_date
         assert isinstance(max_date, date)
         start_date = max_date - timedelta(days=1)
-    end_date = date.today()
+    end_date = datetime.now(UTC).date()
     days = (end_date - start_date).days + 1
     return [start_date + timedelta(days=i) for i in range(days)]
 
@@ -270,7 +271,9 @@ def fetch_jsonl_gz(url: str) -> Generator[Any, None, None]:
                 yield json.loads(line)
 
 
-def export_date(now: datetime = datetime.now(UTC)) -> date:
+def export_date(now: datetime | None = None) -> date:
+    if now is None:
+        now = datetime.now(UTC)
     if 0 <= now.hour < 8:
         return (now - timedelta(days=1)).date()
     return now.date()
@@ -290,7 +293,7 @@ def export_available(tmdb_type: _TMDB_EXPORT_TYPE, d: date) -> bool:
         with urllib.request.urlopen(req, timeout=10) as response:
             status: int = getattr(response, "status", 0)
             return status == 200
-    except Exception as exc:
+    except (urllib.error.URLError, TimeoutError) as exc:
         logger.warning("export_available(%s, %s): %s", tmdb_type, d, exc)
         return False
 
@@ -590,9 +593,9 @@ def format_gh_step_summary(
 
         buf = StringIO()
         print(f"## {filename}", file=buf)
-        print("", file=buf)
+        print(file=buf)
         print(df_stats, file=buf)
-        print("", file=buf)
+        print(file=buf)
         print(f"shape: ({df_new.shape[0]:,}, {df_new.shape[1]:,})", file=buf)
         print(f"changes: +{added:,} -{removed:,} ~{updated:,}", file=buf)
         print(f"rss: {df_new.estimated_size('mb'):,.1f}MB", file=buf)
@@ -691,7 +694,7 @@ def main(
             df2.height,
             df.height,
         )
-        exit(1)
+        sys.exit(1)
 
     logger.debug(df2)
 

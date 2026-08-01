@@ -149,7 +149,7 @@ def test_change_summary_noop() -> None:
 
 
 def test_fetch_jsonl_gz_gzip_response() -> None:
-    d = date.today() - timedelta(days=3)
+    d = datetime.now(UTC).date() - timedelta(days=3)
     url = (
         f"http://files.tmdb.org/p/exports/keyword_ids_{d.strftime('%m_%d_%Y')}.json.gz"
     )
@@ -173,12 +173,12 @@ def test_export_date_after_8am_returns_current_day() -> None:
 
 
 def test_export_available_recent_date_true() -> None:
-    recent = date.today() - timedelta(days=3)
+    recent = datetime.now(UTC).date() - timedelta(days=3)
     assert export_available("movie", recent) is True
 
 
 def test_export_available_old_date_false() -> None:
-    old = date.today() - timedelta(days=365)
+    old = datetime.now(UTC).date() - timedelta(days=365)
     assert export_available("movie", old) is False
 
 
@@ -226,7 +226,7 @@ def test_tmdb_changes_future_date() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df = tmdb_changes(
         tmdb_type="movie",
-        date=date.today() + timedelta(days=2),
+        date=datetime.now(UTC).date() + timedelta(days=2),
         tmdb_api_key=tmdb_api_key,
     )
     assert df.columns == ["id", "date", "adult"]
@@ -261,7 +261,7 @@ def test_tmdb_export_person() -> None:
 def test_insert_tmdb_latest_changes() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
 
-    initial_date = date.today() + timedelta(days=-2)
+    initial_date = datetime.now(UTC).date() + timedelta(days=-2)
     df = tmdb_changes(
         tmdb_type="movie",
         date=initial_date,
@@ -300,7 +300,7 @@ def test_insert_tmdb_latest_changes_empty_df() -> None:
 
 
 def test_tmdb_changes_backfill_date_range() -> None:
-    d = date.today()
+    d = datetime.now(UTC).date()
     df = pl.DataFrame({"date": [d]})
     dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
     assert dates == [
@@ -308,7 +308,7 @@ def test_tmdb_changes_backfill_date_range() -> None:
         d,
     ], dates
 
-    d = date.today() + timedelta(days=-1)
+    d = datetime.now(UTC).date() + timedelta(days=-1)
     df = pl.DataFrame({"date": [d]})
     dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
     assert dates == [
@@ -317,7 +317,7 @@ def test_tmdb_changes_backfill_date_range() -> None:
         d + timedelta(days=1),
     ], dates
 
-    d = date.today() + timedelta(days=-2)
+    d = datetime.now(UTC).date() + timedelta(days=-2)
     df = pl.DataFrame({"date": [d]})
     dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
     assert dates == [
@@ -327,7 +327,7 @@ def test_tmdb_changes_backfill_date_range() -> None:
         d + timedelta(days=2),
     ], dates
 
-    d = date.today() + timedelta(days=-3)
+    d = datetime.now(UTC).date() + timedelta(days=-3)
     df = pl.DataFrame({"date": [d]})
     dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
     assert dates == [
@@ -343,7 +343,7 @@ def test_tmdb_changes_backfill_date_range_empty_df() -> None:
     df = pl.DataFrame({"date": []}, schema={"date": pl.Date})
     dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
     expected_start = date(2012, 10, 5)
-    expected_end = date.today()
+    expected_end = datetime.now(UTC).date()
     expected_days = (expected_end - expected_start).days + 1
     assert len(dates) == expected_days
     assert dates[0] == expected_start
@@ -354,7 +354,7 @@ def test_tmdb_changes_backfill_date_range_missing_date_column() -> None:
     df = pl.DataFrame({"missing_date": [1, 2, 3]}, schema={"missing_date": pl.Int32})
     dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
     expected_start = TMDB_CHANGES_EPOCH["movie"]
-    expected_end = date.today()
+    expected_end = datetime.now(UTC).date()
     expected_days = (expected_end - expected_start).days + 1
     assert len(dates) == expected_days
     assert dates[0] == expected_start
@@ -371,7 +371,7 @@ _FEW_MINUTES_AGO: datetime = datetime.now(UTC) - timedelta(minutes=5)
 def test_insert_tmdb_external_ids() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     df = pl.DataFrame(
-        [{"id": 603, "date": date.today()}],
+        [{"id": 603, "date": datetime.now(UTC).date()}],
         schema={
             "id": pl.UInt32,
             "date": pl.Date,
