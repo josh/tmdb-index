@@ -28,34 +28,28 @@ _IMDB_ID_PATTERN: dict[TMDB_TYPE, str] = {
 _UINT32_MAX = 2**32 - 1
 
 _EXTERNAL_IDS_RESPONSE_SCHEMA: dict[TMDB_TYPE, pl.Schema] = {
-    "movie": pl.Schema(
-        [
-            ("success", pl.Boolean),
-            ("id", pl.UInt32),
-            ("retrieved_at", pl.Datetime(time_unit="ns")),
-            ("imdb_numeric_id", pl.UInt32),
-            ("wikidata_numeric_id", pl.UInt32),
-        ]
-    ),
-    "tv": pl.Schema(
-        [
-            ("success", pl.Boolean),
-            ("id", pl.UInt32),
-            ("retrieved_at", pl.Datetime(time_unit="ns")),
-            ("imdb_numeric_id", pl.UInt32),
-            ("tvdb_id", pl.UInt32),  # Only tv shows have tvdb ids
-            ("wikidata_numeric_id", pl.UInt32),
-        ]
-    ),
-    "person": pl.Schema(
-        [
-            ("success", pl.Boolean),
-            ("id", pl.UInt32),
-            ("retrieved_at", pl.Datetime(time_unit="ns")),
-            ("imdb_numeric_id", pl.UInt32),
-            ("wikidata_numeric_id", pl.UInt32),
-        ]
-    ),
+    "movie": pl.Schema([
+        ("success", pl.Boolean),
+        ("id", pl.UInt32),
+        ("retrieved_at", pl.Datetime(time_unit="ns")),
+        ("imdb_numeric_id", pl.UInt32),
+        ("wikidata_numeric_id", pl.UInt32),
+    ]),
+    "tv": pl.Schema([
+        ("success", pl.Boolean),
+        ("id", pl.UInt32),
+        ("retrieved_at", pl.Datetime(time_unit="ns")),
+        ("imdb_numeric_id", pl.UInt32),
+        ("tvdb_id", pl.UInt32),  # Only tv shows have tvdb ids
+        ("wikidata_numeric_id", pl.UInt32),
+    ]),
+    "person": pl.Schema([
+        ("success", pl.Boolean),
+        ("id", pl.UInt32),
+        ("retrieved_at", pl.Datetime(time_unit="ns")),
+        ("imdb_numeric_id", pl.UInt32),
+        ("wikidata_numeric_id", pl.UInt32),
+    ]),
 }
 
 
@@ -64,7 +58,8 @@ def align_id_col(df: pl.DataFrame) -> pl.DataFrame:
         return df
     max_id: int = df.select(pl.col("id").max()).item()
     id_df = (
-        pl.int_range(end=max_id + 1, dtype=pl.UInt32, eager=True)
+        pl
+        .int_range(end=max_id + 1, dtype=pl.UInt32, eager=True)
         .cast(pl.UInt32)
         .to_frame("id")
     )
@@ -160,27 +155,23 @@ def compute_stats(df_old: pl.DataFrame, df_new: pl.DataFrame) -> pl.DataFrame:
         unique = s_wo_null.n_unique() == s_wo_null.len()
         updated = int((_series_pad(s, max_len) != _series_pad(s_old, max_len)).sum())
 
-        rows.append(
-            {
-                "name": name,
-                "dtype": df.schema[name]._string_repr(),
-                "null": fmt(nulls),
-                "true": fmt(trues) if dtype == pl.Boolean else "",
-                "false": fmt(falses) if dtype == pl.Boolean else "",
-                "unique": "true" if unique else "",
-                "updated": fmt(updated),
-            }
-        )
+        rows.append({
+            "name": name,
+            "dtype": df.schema[name]._string_repr(),
+            "null": fmt(nulls),
+            "true": fmt(trues) if dtype == pl.Boolean else "",
+            "false": fmt(falses) if dtype == pl.Boolean else "",
+            "unique": "true" if unique else "",
+            "updated": fmt(updated),
+        })
 
     return pl.DataFrame(rows)
 
 
-_TMDB_CHANGES_SCHEMA = pl.Schema(
-    [
-        ("id", pl.UInt32),
-        ("adult", pl.Boolean),
-    ]
-)
+_TMDB_CHANGES_SCHEMA = pl.Schema([
+    ("id", pl.UInt32),
+    ("adult", pl.Boolean),
+])
 
 TMDB_CHANGES_EPOCH: dict[TMDB_TYPE, date] = {
     "movie": date(2012, 10, 5),
@@ -207,7 +198,8 @@ def tmdb_changes(
         data = json.load(response)
 
     df = (
-        pl.from_dicts(data["results"], schema=_TMDB_CHANGES_SCHEMA)
+        pl
+        .from_dicts(data["results"], schema=_TMDB_CHANGES_SCHEMA)
         .with_columns(pl.lit(date).alias("date"))
         .select("id", "date", "adult")
         .drop_nulls(subset=["id"])
@@ -313,7 +305,8 @@ def _tmdb_raw_export(tmdb_type: _TMDB_EXPORT_TYPE) -> pl.DataFrame:
     )
     data = fetch_jsonl_gz(url)
     df = (
-        pl.from_dicts(data, schema=[("id", pl.UInt32)])
+        pl
+        .from_dicts(data, schema=[("id", pl.UInt32)])
         .sort("id")
         .select(
             pl.col("id"),
@@ -358,7 +351,8 @@ def update_tmdb_export_flag(df: pl.DataFrame, tmdb_type: TMDB_TYPE) -> pl.DataFr
         col_names.append("in_export")
 
     in_export_col = (
-        df.select("id")
+        df
+        .select("id")
         .join(tmdb_export(tmdb_type), on="id", how="left", coalesce=True)["in_export"]
         .fill_null(False)
     )
