@@ -159,7 +159,10 @@ def compute_stats(df_old: pl.DataFrame, df_new: pl.DataFrame) -> pl.DataFrame:
     rows = []
     for name, dtype in df.schema.items():
         s = df[name]
-        s_old = df_old[name]
+        if name in df_old.columns:
+            s_old = df_old[name]
+        else:
+            s_old = pl.Series(name, [], dtype=dtype)
         max_len = max(s.len(), s_old.len())
         s_wo_null = s.drop_nulls()
         nulls = s.null_count()
