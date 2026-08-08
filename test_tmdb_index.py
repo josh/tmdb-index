@@ -794,6 +794,40 @@ def test_compute_stats_empty() -> None:
     assert adult_stats["dtype"] == "bool"
 
 
+def test_compute_stats_new_column() -> None:
+    df_old = pl.DataFrame(schema={"id": pl.UInt32})
+    df_new = pl.DataFrame(
+        data=[
+            {"id": 0, "in_export": True},
+            {"id": 1, "in_export": False},
+        ],
+        schema={"id": pl.UInt32, "in_export": pl.Boolean},
+    )
+    df_stats = compute_stats(df_old=df_old, df_new=df_new)
+
+    in_export_stats = df_stats.row(index=1, named=True)
+    assert in_export_stats["name"] == "in_export"
+    assert in_export_stats["dtype"] == "bool"
+    assert in_export_stats["updated"] == ""
+
+
+def test_format_gh_step_summary_new_index() -> None:
+    df_old = pl.DataFrame(schema={"id": pl.UInt32})
+    df_new = pl.DataFrame(
+        data=[
+            {"id": 0, "in_export": True},
+            {"id": 1, "in_export": True},
+        ],
+        schema={"id": pl.UInt32, "in_export": pl.Boolean},
+    )
+    summary = format_gh_step_summary(
+        df_old=df_old, df_new=df_new, filename="movie.parquet"
+    )
+
+    assert "## movie.parquet" in summary
+    assert "changes: +2 -0 ~0" in summary
+
+
 def test_format_gh_step_summary() -> None:
     schema = {"id": pl.UInt32, "adult": pl.Boolean}
     df_old = pl.DataFrame(
