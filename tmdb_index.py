@@ -243,7 +243,7 @@ def tmdb_changes_backfill_date_range(
         max_date = df["date"].max()
         assert max_date
         assert isinstance(max_date, date)
-        start_date = max_date - timedelta(days=1)
+        start_date = max(max_date - timedelta(days=1), TMDB_CHANGES_EPOCH[tmdb_type])
     end_date = datetime.now(UTC).date()
     days = (end_date - start_date).days + 1
     return [start_date + timedelta(days=i) for i in range(days)]

@@ -339,6 +339,13 @@ def test_tmdb_changes_backfill_date_range() -> None:
     ], dates
 
 
+def test_tmdb_changes_backfill_date_range_at_epoch() -> None:
+    epoch = TMDB_CHANGES_EPOCH["movie"]
+    df = pl.DataFrame({"date": [epoch]})
+    dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
+    assert dates[0] == epoch, dates[:3]
+
+
 def test_tmdb_changes_backfill_date_range_empty_df() -> None:
     df = pl.DataFrame({"date": []}, schema={"date": pl.Date})
     dates = tmdb_changes_backfill_date_range(df, tmdb_type="movie")
