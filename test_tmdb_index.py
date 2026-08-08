@@ -397,6 +397,38 @@ def test_insert_tmdb_external_ids() -> None:
     not os.environ.get("TMDB_API_KEY"),
     reason="TMDB_API_KEY not set",
 )
+def test_insert_tmdb_external_ids_changed_after_afternoon_retrieval() -> None:
+    tmdb_api_key = os.environ["TMDB_API_KEY"]
+    today = datetime.now(UTC).date()
+    df = pl.DataFrame(
+        [
+            {
+                "id": 603,
+                "date": today,
+                "retrieved_at": datetime(today.year, today.month, today.day, 18, 0),
+            }
+        ],
+        schema={
+            "id": pl.UInt32,
+            "date": pl.Date,
+            "retrieved_at": pl.Datetime(time_unit="ns"),
+        },
+    )
+    result = insert_tmdb_external_ids(
+        df,
+        tmdb_type="movie",
+        tmdb_api_key=tmdb_api_key,
+        backfill_limit=0,
+        refresh_limit=0,
+    )
+    row = result.filter(pl.col("id") == 603).row(0, named=True)
+    assert row["imdb_numeric_id"] == 133093
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TMDB_API_KEY"),
+    reason="TMDB_API_KEY not set",
+)
 def test_tmdb_external_ids_movie() -> None:
     tmdb_api_key = os.environ["TMDB_API_KEY"]
     result = tmdb_external_ids(
