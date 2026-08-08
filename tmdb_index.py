@@ -567,7 +567,7 @@ def insert_tmdb_external_ids(
     if "date" in df.columns and "retrieved_at" in df.columns:
         # If the tmdb change date is newer than our last retrieved at date
         filter_predicates.append(
-            pl.col("date") >= pl.col("retrieved_at").dt.round("1d")
+            pl.col("date") >= pl.col("retrieved_at").dt.truncate("1d")
         )
 
     if backfill_limit > 0:
