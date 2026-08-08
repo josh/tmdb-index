@@ -1,15 +1,22 @@
+import email.utils
+import functools
 import gzip
+import hashlib
+import http.client
 import json
 import logging
 import os
 import re
 import sys
+import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Collection, Generator, Iterator
 from datetime import UTC, date, datetime, timedelta
 from io import StringIO
+from pathlib import Path
 from typing import Any, Literal, cast
 
 import click
@@ -257,18 +264,66 @@ def insert_tmdb_latest_changes(
     return align_id_col(df)
 
 
-def fetch_jsonl_gz(url: str) -> Generator[Any, None, None]:
+_DOWNLOAD_CHUNK_SIZE = 1024 * 1024
+
+
+def _download_to_path(url: str, path: Path, retries: int = 5) -> None:
     req = urllib.request.Request(url)
-    with urllib.request.urlopen(req, timeout=10) as response:
-        logger.debug(
-            "fetch_jsonl_gz(%s): %s %s",
-            url,
-            response.status,
-            response.reason,
-        )
-        with gzip.open(response, mode="rt", encoding="utf-8") as gz:
-            for line in gz:
-                yield json.loads(line)
+    exc: Exception | None = None
+
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                logger.debug(
+                    "_download_to_path(%s): %s %s",
+                    url,
+                    response.status,
+                    response.reason,
+                )
+                content_length = response.headers.get("Content-Length")
+                written = 0
+                with path.open("wb") as f:
+                    while chunk := response.read(_DOWNLOAD_CHUNK_SIZE):
+                        written += len(chunk)
+                        f.write(chunk)
+
+            if content_length is not None and written != int(content_length):
+                raise http.client.IncompleteRead(b"", int(content_length) - written)
+
+            return
+        except urllib.error.HTTPError as e:
+            logger.error("HTTP error fetching %s: %s", url, e)
+            raise
+        except (OSError, http.client.HTTPException) as e:
+            exc = e
+            if attempt == retries - 1:
+                logger.warning("Error fetching %s: %s", url, e)
+            else:
+                logger.warning("Error fetching %s: %s; retrying", url, e)
+                time.sleep(2**attempt)
+
+    assert exc is not None
+    raise exc
+
+
+@functools.cache
+def _download_dir() -> tempfile.TemporaryDirectory[str]:
+    return tempfile.TemporaryDirectory(prefix="tmdb-index-")
+
+
+@functools.cache
+def _download_cached(url: str) -> Path:
+    digest = hashlib.sha256(url.encode()).hexdigest()[:16]
+    filename = os.path.basename(urllib.parse.urlparse(url).path) or "download"
+    path = Path(_download_dir().name) / f"{digest}-{filename}"
+    _download_to_path(url, path)
+    return path
+
+
+def fetch_jsonl_gz(url: str) -> Generator[Any, None, None]:
+    with gzip.open(_download_cached(url), mode="rt", encoding="utf-8") as gz:
+        for line in gz:
+            yield json.loads(line)
 
 
 def export_date(now: datetime | None = None) -> date:
@@ -369,6 +424,29 @@ def update_tmdb_export_flag(df: pl.DataFrame, tmdb_type: TMDB_TYPE) -> pl.DataFr
     return df.with_columns(in_export=in_export_col).select(col_names)
 
 
+def _retry_after_delay(e: urllib.error.HTTPError, attempt: int) -> float:
+    retry_after = e.headers.get("Retry-After") if e.headers else None
+    delay: float | None = None
+
+    if retry_after:
+        try:
+            delay = float(retry_after)
+        except ValueError:
+            try:
+                parsed = email.utils.parsedate_to_datetime(retry_after)
+            except (TypeError, ValueError):
+                parsed = None
+            if parsed is not None:
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=UTC)
+                delay = (parsed - datetime.now(UTC)).total_seconds()
+
+    if delay is None:
+        delay = float(2**attempt)
+
+    return min(max(delay, 1.0), 60.0)
+
+
 def _fetch_json(url: str, retries: int = 5) -> Any:
     req = urllib.request.Request(url)
     exc: Exception | None = None
@@ -384,12 +462,7 @@ def _fetch_json(url: str, retries: int = 5) -> Any:
                 if attempt == retries - 1:
                     logger.warning("HTTP 429 fetching %s; giving up", url)
                     break
-                retry_after = e.headers.get("Retry-After") if e.headers else None
-                try:
-                    delay = float(retry_after) if retry_after else 2**attempt
-                except ValueError:
-                    delay = 2**attempt
-                delay = min(max(delay, 1.0), 60.0)
+                delay = _retry_after_delay(e, attempt)
                 logger.warning("HTTP 429 fetching %s; retrying in %.1fs", url, delay)
                 time.sleep(delay)
                 continue
