@@ -405,7 +405,9 @@ def test_insert_tmdb_external_ids_changed_after_afternoon_retrieval() -> None:
             {
                 "id": 603,
                 "date": today,
-                "retrieved_at": datetime(today.year, today.month, today.day, 18, 0),
+                "retrieved_at": datetime(
+                    today.year, today.month, today.day, 18, 0, tzinfo=UTC
+                ),
             }
         ],
         schema={
